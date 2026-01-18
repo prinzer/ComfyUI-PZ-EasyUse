@@ -18,6 +18,7 @@ Stop wrestling with messy LoRA connections!
 - **Smart UI**: Dynamic nodes allow you to add/remove LoRA slots on the fly. Turning off a row or removing it automatically resets its values to prevent accidents.
 
 ---
+![1](https://github.com/user-attachments/assets/7ac31c59-e8a6-411f-a514-6803e50f9cf4)
 
 <a name="chinese"></a>
 # ComfyUI PZ EasyUse 节点组
@@ -50,3 +51,4 @@ Stop wrestling with messy LoRA connections!
    ```bash  
 
    git clone https://github.com/prinzer/ComfyUI-PZ-EasyUse.git  
+
