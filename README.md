@@ -48,4 +48,5 @@ Stop wrestling with messy LoRA connections!
 1. Navigate to your ComfyUI `custom_nodes` directory.
 2. Clone this repository:
    ```bash  
-   git clone https://github.com/YOUR_USERNAME/ComfyUI-PZ-EasyUse.git  
+
+   git clone https://github.com/prinzer/ComfyUI-PZ-EasyUse.git  
