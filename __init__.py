@@ -1,34 +1,45 @@
-from .pz_prompt_palette import (
-    PZ_Prompt_Fixed, 
-    PZ_Prompt_Dynamic, 
-    PZ_String_Join, 
-    PZ_LoRA_Fixed_Model,
-    PZ_LoRA_Fixed_Full,
-    PZ_LoRA_Dynamic_Model,
-    PZ_LoRA_Dynamic_Full
-)
+from .pz_prompt import PZ_Prompt_Fixed, PZ_Prompt_Dynamic, PZ_String_Join
+from .pz_lora import PZ_LoRA_Fixed_Model, PZ_LoRA_Fixed_Full, PZ_LoRA_Dynamic_Model, PZ_LoRA_Dynamic_Full
+from .pz_utils import PZ_Save_Image, PZ_Resolution_Selector
+from .pz_loop_auto import PZ_Batch_Dispatcher # <--- 引入新类
 
+ 
 NODE_CLASS_MAPPINGS = {
-    "PZ_Prompt_Fixed_10": PZ_Prompt_Fixed,
-    "PZ_Prompt_Dynamic_20": PZ_Prompt_Dynamic,
-    "PZ_String_Join": PZ_String_Join,
-    "PZ_LoRA_Fixed_Model": PZ_LoRA_Fixed_Model,
-    "PZ_LoRA_Fixed_Full": PZ_LoRA_Fixed_Full,
+    # 提示词类
+##    "PZ_Prompt_Fixed": PZ_Prompt_Fixed,
+    "PZ_Prompt_Dynamic": PZ_Prompt_Dynamic,
+##    "PZ_String_Join": PZ_String_Join,
+    
+    # LoRA 类
+##    "PZ_LoRA_Fixed_Model": PZ_LoRA_Fixed_Model,
+##    "PZ_LoRA_Fixed_Full": PZ_LoRA_Fixed_Full,
     "PZ_LoRA_Dynamic_Model": PZ_LoRA_Dynamic_Model,
-    "PZ_LoRA_Dynamic_Full": PZ_LoRA_Dynamic_Full
+    "PZ_LoRA_Dynamic_Full": PZ_LoRA_Dynamic_Full,
+    
+    # 工具类
+    "PZ_Save_Image": PZ_Save_Image,
+    "PZ_Resolution_Selector": PZ_Resolution_Selector,
+    
+
+    # 循环方案B (Auto-Queue模式)
+    "PZ_Batch_Dispatcher": PZ_Batch_Dispatcher, # <--- 注册
 }
 
-# 显示名称依然保持 PZ 开头，方便搜索
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "PZ_Prompt_Fixed_10": "PZ提示词(固定10条)",
-    "PZ_Prompt_Dynamic_20": "PZ提示词(动态50条)",
-    "PZ_String_Join": "PZ文本合并",
-    "PZ_LoRA_Fixed_Model": "PZ LoRA组(固定5条-仅模型)",
-    "PZ_LoRA_Fixed_Full": "PZ LoRA组(固定5条-全功能)",
-    "PZ_LoRA_Dynamic_Model": "PZ LoRA组(动态20条-仅模型)",
-    "PZ_LoRA_Dynamic_Full": "PZ LoRA组(动态20条-全功能)"
+##    "PZ_Prompt_Fixed": "PZ 提示词组 (固定10)",
+    "PZ_Prompt_Dynamic": "PZ 提示词组 (动态50)",
+##    "PZ_String_Join": "PZ 字符串合并",
+##    "PZ_LoRA_Fixed_Model": "PZ LoRA组 (固定/仅模型)",
+##    "PZ_LoRA_Fixed_Full": "PZ LoRA组 (固定/全模组)",
+    "PZ_LoRA_Dynamic_Model": "PZ LoRA组 (动态/仅模型)",
+    "PZ_LoRA_Dynamic_Full": "PZ LoRA组 (动态/全模组)",
+    "PZ_Save_Image": "PZ 图片保存 (增强版)",
+    "PZ_Resolution_Selector": "PZ 分辨率选择器",
+    "PZ_Batch_Dispatcher": "🚀 PZ 任务发射器 (JS版)",
 }
 
-WEB_DIRECTORY = "./web"
+# 🔥🔥🔥 关键修改在这里 🔥🔥🔥
+# 显式告诉 ComfyUI：前端文件在这个文件夹里！
+WEB_DIRECTORY = "./js"
 
-__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
+__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
