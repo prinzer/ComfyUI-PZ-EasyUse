@@ -13,12 +13,18 @@ class PZ_Commander:
             "required": {
                 "start_index": ("INT", {"default": 0, "min": 0, "step": 1, "display": "number"}),
                 "count": ("INT", {"default": 1, "min": 1, "step": 1, "display": "number"}),
+                
+                # 🔥 只保留您需要的两个核心模式
+                "prompt_mode": (["Iterate (JS Loop)", "Generator List (Batch List)"], ),
+
                 "image_source": (["None (纯文本/文生图)", "Directory Path (批量目录)"], ),
                 "directory_path": ("STRING", {"default": "", "multiline": False, "placeholder": "输入图片文件夹路径..."}),
+
                 "width": (res_list, {"default": 1024}),
                 "height": (res_list, {"default": 1024}),
                 "batch_size": ("INT", {"default": 1, "min": 1}),
-                "prompt_text": ("STRING", {"multiline": True, "default": "", "placeholder": "每行一条 Prompt", "dynamicPrompts": False}),
+
+                "prompt_text": ("STRING", {"multiline": True, "default": "", "placeholder": "Prompt 列表...", "dynamicPrompts": False}),
                 "prompt_prefix": ("STRING", {"multiline": True, "default": "", "placeholder": "前缀..."}),
                 "prompt_suffix": ("STRING", {"multiline": True, "default": "", "placeholder": "后缀..."}),
             },
@@ -29,93 +35,102 @@ class PZ_Commander:
 
     RETURN_TYPES = ("LATENT", "IMAGE", "MASK", "STRING", "INT", "INT", "INT")
     RETURN_NAMES = ("LATENT", "IMAGE", "MASK", "final_prompt", "width", "height", "current_index")
+    
+    # 🔥 开启 List 输出功能
+    OUTPUT_IS_LIST = (False, False, False, True, False, False, False)
+
     FUNCTION = "process"
     CATEGORY = "PZ EasyUse"
 
-    def process(self, start_index, count, image_source, directory_path, 
+    def process(self, start_index, count, prompt_mode, image_source, directory_path, 
                 width, height, batch_size,
                 prompt_text, prompt_prefix, prompt_suffix, unique_id=None):
         
-        # 🔥🔥🔥 核心修复：确保每次进入函数时，所有变量都是全新的 🔥🔥🔥
-        parts = [] 
-        final_prompt = ""
-        current_middle = ""
-
-        # 1. 解析 Prompt 列表
-        # 使用 splitlines() 更加安全
         lines = [line.strip() for line in prompt_text.strip().splitlines() if line.strip()]
-        
-        # 2. 获取当前这一条 Prompt
-        if lines:
-            # 使用取余数逻辑，防止 index 越界
-            safe_index = start_index % len(lines)
-            current_middle = lines[safe_index]
-            #print(f"✅ [PZ Commander] Index {start_index} -> Line {safe_index}: {current_middle[:20]}...")
-        else:
-            print(f"⚠️ [PZ Commander] Prompt List is Empty!")
+        if not lines: lines = [""]
 
-        # 3. 严格拼接逻辑 (全新列表)
-        # 前缀
-        if prompt_prefix and prompt_prefix.strip(): 
-            parts.append(prompt_prefix.strip())
-        
-        # 中间 (当前这一条)
-        if current_middle and current_middle.strip(): 
-            parts.append(current_middle.strip())
+        # -----------------------------------------------------------
+        # 🌟 模式 A: Generator List (您要求的：一次输出 N 个 Prompt 的 List)
+        # -----------------------------------------------------------
+        if "Generator List" in prompt_mode:
+            print(f"✅ [PZ] Mode: Generator List (Count: {count})")
             
-        # 后缀
-        if prompt_suffix and prompt_suffix.strip(): 
-            parts.append(prompt_suffix.strip())
-        
-        # 合并
-        final_prompt = ", ".join(parts)
-        
-        # 4. Latent 生成
+            prompt_list_out = []
+            for i in range(count):
+                # 循环取行
+                current_idx = (start_index + i) % len(lines)
+                line_content = lines[current_idx]
+                
+                # 拼接
+                parts = []
+                if prompt_prefix: parts.append(prompt_prefix.strip())
+                if line_content: parts.append(line_content)
+                if prompt_suffix: parts.append(prompt_suffix.strip())
+                
+                prompt_list_out.append(", ".join(parts))
+
+            # 返回列表，ComfyUI 会自动处理这个 List 跑 N 次
+            return (
+                self.make_latent(width, height, batch_size), 
+                self.make_empty_image(), 
+                self.make_empty_mask(), 
+                prompt_list_out, # List [str, str...]
+                width, height, start_index
+            )
+
+        # -----------------------------------------------------------
+        # 🌟 模式 B: Iterate (旧模式，JS 循环)
+        # -----------------------------------------------------------
+        else:
+            safe_index = start_index % len(lines)
+            print(f"✅ [PZ] Mode: Iterate -> Index {safe_index}")
+            
+            parts = []
+            if prompt_prefix: parts.append(prompt_prefix.strip())
+            parts.append(lines[safe_index])
+            if prompt_suffix: parts.append(prompt_suffix.strip())
+            
+            final_str = ", ".join(parts)
+            
+            # 即使是单条，也要包在 List 里返回 (因为 OUTPUT_IS_LIST=True)
+            return (
+                self.make_latent(width, height, batch_size), 
+                *self.load_image_logic(image_source, directory_path, start_index),
+                [final_str], 
+                width, height, start_index
+            )
+
+    # --- 辅助函数 ---
+    def make_latent(self, width, height, batch_size):
         w_8 = (width // 8) * 8
         h_8 = (height // 8) * 8
-        latent_tensor = torch.zeros([batch_size, 4, h_8 // 8, w_8 // 8], device="cpu")
-        latent_dict = {"samples": latent_tensor}
+        return {"samples": torch.zeros([batch_size, 4, h_8 // 8, w_8 // 8], device="cpu")}
 
-        # 5. 图片加载逻辑 (默认黑图)
-        output_image = torch.zeros((1, 512, 512, 3), dtype=torch.float32, device="cpu")
-        output_mask = torch.zeros((64,64), dtype=torch.float32, device="cpu")
-        
-        mode = str(image_source)
-        target_path = None
+    def make_empty_image(self):
+        return torch.zeros((1, 512, 512, 3), dtype=torch.float32, device="cpu")
+    
+    def make_empty_mask(self):
+        return torch.zeros((64,64), dtype=torch.float32, device="cpu")
 
-        if "Directory" in mode:
-            clean_dir = directory_path.strip().strip('"').strip("'")
-            if os.path.isdir(clean_dir):
-                valid_exts = ['.jpg', '.jpeg', '.png', '.bmp', '.webp', '.tiff']
-                try:
-                    # 每次都重新读列表，虽然慢一点点，但绝不会错
-                    files = [f for f in os.listdir(clean_dir) if os.path.splitext(f)[1].lower() in valid_exts]
-                    files.sort()
-                    if files:
-                        file_index = start_index % len(files)
-                        target_path = os.path.join(clean_dir, files[file_index])
-                except Exception:
-                    pass
-
-        if target_path and os.path.isfile(target_path):
-            output_image, output_mask = self.load_image(target_path)
-
-        # 再次确保返回的是独立的字符串
-        return (latent_dict, output_image, output_mask, str(final_prompt), width, height, start_index)
+    def load_image_logic(self, image_source, directory_path, index):
+        if "None" in image_source: return (self.make_empty_image(), self.make_empty_mask())
+        clean_dir = directory_path.strip().strip('"').strip("'")
+        if not os.path.isdir(clean_dir): return (self.make_empty_image(), self.make_empty_mask())
+        valid_exts = ['.jpg', '.jpeg', '.png', '.bmp', '.webp']
+        try:
+            files = [f for f in os.listdir(clean_dir) if os.path.splitext(f)[1].lower() in valid_exts]
+            files.sort()
+            if files:
+                file_index = index % len(files)
+                return self.load_image(os.path.join(clean_dir, files[file_index]))
+        except: pass
+        return (self.make_empty_image(), self.make_empty_mask())
 
     def load_image(self, path):
         try:
-            i = Image.open(path)
-            i = ImageOps.exif_transpose(i)
-            image = i.convert("RGB")
+            i = Image.open(path); i = ImageOps.exif_transpose(i); image = i.convert("RGB")
             image = np.array(image).astype(np.float32) / 255.0
             image_tensor = torch.from_numpy(image)[None,]
-            if 'A' in i.getbands():
-                mask = np.array(i.getchannel('A')).astype(np.float32) / 255.0
-                mask_tensor = 1.0 - torch.from_numpy(mask)
-            else:
-                mask_tensor = torch.zeros((64,64), dtype=torch.float32, device="cpu")
+            mask_tensor = 1.0 - torch.from_numpy(np.array(i.getchannel('A')).astype(np.float32) / 255.0) if 'A' in i.getbands() else torch.zeros((64,64), dtype=torch.float32, device="cpu")
             return image_tensor, mask_tensor
-        except:
-            return (torch.zeros((1, 512, 512, 3), dtype=torch.float32, device="cpu"), 
-                    torch.zeros((64,64), dtype=torch.float32, device="cpu"))
+        except: return (self.make_empty_image(), self.make_empty_mask())
