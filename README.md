@@ -9,8 +9,8 @@
 ## ✨ 核心亮点 (Key Features)
 
 *   🚀 **PZ Commander (全能循环器)**:
-    *   **Prompt 批量循环**: 在一个文本框内粘贴多行 Prompt，一键自动逐行执行，无需手动切换。
-    *   **批量图生图**: 指定本地文件夹路径，自动循环读取文件夹内的图片进行处理。
+    *   **Prompt 批量循环**: 在一个文本框内粘贴多行 Prompt，一键自动逐行执行，无需手动切换(异步多任务挂起)。
+    *   **批量图生图**: 指定本地文件夹路径，自动循环读取文件夹内的图片进行逐张处理(异步多任务挂起)。
     *   **JS 自动调度**: 独家内置 JS 队列劫持技术，一次点击 Queue 即可自动派发成百上千个任务。
     *   **极简模式**: 支持纯文生图 (Text-Only) 和 批量目录 (Directory Batch) 模式切换。
 *   🎨 **LoRA & Prompt 动态组**: 支持多达 50 组的动态 LoRA 和 Prompt 加载器，告别面条式连线。
@@ -29,3 +29,4 @@
     ```bash  
     cd ComfyUI/custom_nodes/
 git clone https://github.com/prinzer/ComfyUI-PZ-EasyUse.git  
+
