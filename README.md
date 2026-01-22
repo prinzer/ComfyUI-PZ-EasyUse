@@ -19,14 +19,9 @@
 
 ## 📦 安装方法 (Installation)
 
-### 方法 1: 使用 ComfyUI Manager (推荐)
-1.  在 ComfyUI Manager 中搜索 `PZ EasyUse`。
-2.  点击 **Install** 安装。
-3.  重启 ComfyUI。
 
 ### 方法 2: 手动安装
-1.  打开终端 (CMD/Terminal)，进入 ComfyUI 的 `custom_nodes` 目录：
-    ```bash  
-    cd ComfyUI/custom_nodes/
+1.  进入 ComfyUI 的 `custom_nodes` 目录：
 git clone https://github.com/prinzer/ComfyUI-PZ-EasyUse.git  
+
 
