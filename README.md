@@ -5,8 +5,11 @@
 **PZ EasyUse** 是一套专为 **ComfyUI** 设计的高效工具节点包，旨在简化繁琐的工作流操作。
 
 更新增加了Generator List (Batch List)
+
 Iterate (JS Loop)：经典的“JS 帮你按多次按钮”。
+
 Generator List (Batch List)：“生成数组/List，一次给 K 采样器，一次任务出多张图”。
+
 
 其中最核心的组件 **PZ Commander (提示词&图片循环器)** 提供了强大的批量自动化功能，支持纯文本 Prompt 循环和“目录级”的批量图生图，是进行风格测试、模型对比和批量生产的利器。
 
@@ -27,6 +30,7 @@ Generator List (Batch List)：“生成数组/List，一次给 K 采样器，一
 ### 方法 2: 手动安装
 1.  进入 ComfyUI 的 `custom_nodes` 目录：
 git clone https://github.com/prinzer/ComfyUI-PZ-EasyUse.git  
+
 
 
 
