@@ -27,11 +27,13 @@ Generator List (Batch List)：“生成数组/List，一次给 K 采样器，一
 *   📐 **分辨率选择**: 预设常用 SD1.5/SDXL 分辨率，一键设置。
 
 ## 📦 安装方法 (Installation)
-
+### 方法 1: 手动安装
+下载压缩包，解压缩后文件夹名字去掉-main，放入custom_nodes，重启comfyui
 
 ### 方法 2: 手动安装
 1.  进入 ComfyUI 的 `custom_nodes` 目录：
 git clone https://github.com/prinzer/ComfyUI-PZ-EasyUse.git  
+
 
 
 
