@@ -26,7 +26,10 @@ class PZ_Prompt_Dynamic:
     def __init__(self): pass
     @classmethod
     def INPUT_TYPES(s):
-        required_inputs = {}
+        required_inputs = {
+            # 新增模式切换开关
+            "模式": (["多选叠加 (Multi)", "单选互斥 (Radio)"], {"default": "多选叠加 (Multi)"}),
+        }
         for i in range(1, 51):
             default_state = True if i == 1 else False
             required_inputs[f"[{i:02d}] 生效"] = ("BOOLEAN", {"default": default_state, "label_on": "🟢 开启", "label_off": "⚪ 关闭"})
@@ -36,12 +39,21 @@ class PZ_Prompt_Dynamic:
     RETURN_NAMES = ("text",)
     FUNCTION = "process"
     CATEGORY = "PZ EasyUse"
-    def process(self, 前缀=None, **kwargs):
+    
+    def process(self, 前缀=None, 模式="多选叠加 (Multi)", **kwargs):
         valid_prompts = []
+        is_radio = "Radio" in 模式
+        
         for i in range(1, 51):
             is_active = kwargs.get(f"[{i:02d}] 生效", False)
             text = kwargs.get(f"[{i:02d}] 提示词", "").strip()
-            if is_active and text: valid_prompts.append(text)
+            
+            if is_active and text:
+                valid_prompts.append(text)
+                # 如果是单选模式，找到第一个有效的就立刻停止
+                if is_radio:
+                    break 
+        
         result = ", ".join(valid_prompts)
         if 前缀: result = f"{前缀}, {result}" if result else 前缀
         return (result,)
