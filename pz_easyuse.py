@@ -8,7 +8,7 @@ from aiohttp import web
 from nodes import SaveImage
 
 # ==========================================
-# 1. PZ 保存图片 (增强版 - 自动清洗路径)
+# 1. PZ 保存图片 (增强版 - 可选输入防止爆红)
 # ==========================================
 class PZ_Save_Image:
     def __init__(self):
@@ -21,12 +21,14 @@ class PZ_Save_Image:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "图像": ("IMAGE", ),
+                # 🔥 注意：图像已从这里移走
                 "文件前缀": ("STRING", {"default": "PZ"}),
                 "日期子文件夹": ("BOOLEAN", {"default": True, "label_on": "🟢 开启", "label_off": "⚪ 关闭"}),
                 "包含模型名": ("BOOLEAN", {"default": False, "label_on": "🟢 开启", "label_off": "⚪ 关闭"}),
             },
             "optional": {
+                # 🔥 关键修改：图像变成了可选输入
+                "图像": ("IMAGE", ),
                 "模型名输入": ("STRING", {"forceInput": True}),
             },
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
@@ -37,7 +39,12 @@ class PZ_Save_Image:
     OUTPUT_NODE = True
     CATEGORY = "PZ EasyUse"
 
-    def save_images(self, 图像, 文件前缀, 日期子文件夹, 包含模型名, 模型名输入=None, prompt=None, extra_pnginfo=None):
+    # 🔥 关键修改：图像参数默认设为 None
+    def save_images(self, 文件前缀, 日期子文件夹, 包含模型名, 图像=None, 模型名输入=None, prompt=None, extra_pnginfo=None):
+        # 🔥 关键修改：判空保护
+        if 图像 is None:
+            return {}
+
         full_prefix = 文件前缀
         
         # 1. 处理日期子文件夹
@@ -46,19 +53,10 @@ class PZ_Save_Image:
             date_folder = now.strftime("%Y-%m-%d")
             full_prefix = f"{date_folder}/{full_prefix}"
             
-        # 2. 处理模型名 (核心修改：清洗路径斜杠)
+        # 2. 处理模型名 (清洗路径斜杠)
         if 包含模型名 and 模型名输入:
-            # 第一步：把反斜杠 \ 和正斜杠 / 全部替换成下划线 _
-            # 这样 folder\lora_v1 就会变成 folder_lora_v1
             clean_name = 模型名输入.replace("\\", "_").replace("/", "_")
-            
-            # (可选) 如果你只想保留文件名，去掉所有路径前缀，可以用下面这行代替上面那行：
-            # clean_name = os.path.basename(模型名输入) # 结果：lora_v1.safetensors
-            
-            # 第二步：去掉扩展名 (例如 .safetensors)
             clean_name = os.path.splitext(clean_name)[0]
-            
-            # 拼接到前缀
             full_prefix = f"{full_prefix}_{clean_name}"
 
         saver = SaveImage()
