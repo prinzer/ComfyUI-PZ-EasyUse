@@ -3,9 +3,11 @@
 ![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg) ![ComfyUI](https://img.shields.io/badge/ComfyUI-Custom_Node-green.svg) ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 
 **PZ EasyUse** 是一套专为 **ComfyUI** 设计的高效工具节点包，旨在简化繁琐的工作流操作。
-
+2026年1月24日：
+更新增加了提示词选择器和lora选择器的单选和多选切换功能，修改了多个循环器互相影响的BUG。
+2026年1月24日：
 更新增加了提示词循环器单独纯文本版:PZ Commander (纯文本版)
-
+2026年1月23日：
 更新增加了Generator List (Batch List)
 
 Iterate (JS Loop)：经典的“JS 帮你按多次按钮”。
@@ -36,6 +38,7 @@ Generator List (Batch List)：“生成数组/List，一次给 K 采样器，一
 ### 方法 2: 手动安装
 1.  进入 ComfyUI 的 `custom_nodes` 目录：
 git clone https://github.com/prinzer/ComfyUI-PZ-EasyUse.git  
+
 
 
 
