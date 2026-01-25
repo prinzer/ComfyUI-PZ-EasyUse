@@ -4,7 +4,7 @@
 
 **PZ EasyUse** 是一套专为 **ComfyUI** 设计的高效工具节点包，旨在简化繁琐的工作流操作。
 
-2026年1月24日：
+2026年1月25日：
 
 更新增加了提示词选择器和lora选择器的单选和多选切换功能，修改了多个循环器互相影响的BUG。
 
@@ -44,6 +44,7 @@ Generator List (Batch List)：“生成数组/List，一次给 K 采样器，一
 ### 方法 2: 手动安装
 1.  进入 ComfyUI 的 `custom_nodes` 目录：
 git clone https://github.com/prinzer/ComfyUI-PZ-EasyUse.git  
+
 
 
 
