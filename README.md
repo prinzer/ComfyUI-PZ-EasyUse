@@ -14,7 +14,7 @@ Generator List (Batch List)：“生成数组/List，一次给 K 采样器，一
 
 ## 📸 Workflow (工作流演示)
 <!-- 这里放你的图片 -->
-<img src="./images/demo.png" width="800" />
+<img src="./images/demo.png"  />
 
 其中最核心的组件 **PZ Commander (提示词&图片循环器)** 提供了强大的批量自动化功能，支持纯文本 Prompt 循环和“目录级”的批量图生图，是进行风格测试、模型对比和批量生产的利器。
 
@@ -36,6 +36,7 @@ Generator List (Batch List)：“生成数组/List，一次给 K 采样器，一
 ### 方法 2: 手动安装
 1.  进入 ComfyUI 的 `custom_nodes` 目录：
 git clone https://github.com/prinzer/ComfyUI-PZ-EasyUse.git  
+
 
 
 
