@@ -4,13 +4,14 @@
 
 **PZ EasyUse** 是一套专为 **ComfyUI** 设计的高效工具节点包，旨在简化繁琐的工作流操作。
 2026年9月6日：
+
 更新增加了一个MINIMAX H3 手写提示词小工具PZ MiniMax Prompt (6 Sections)，可以自定义标签快速输入，根据推荐提示词格式分区书写，提示词可以保存在input文件夹下json文件，可导出导入。
+
+<img src="./images/PZ MiniMax Prompt (6 Sections).png"  />
 
 2026年1月25日：
 
 更新增加了提示词选择器和lora选择器的单选和多选切换功能，修改了多个循环器互相影响的BUG。
-
-<img src="./images/PZ MiniMax Prompt (6 Sections).png"  />
 
 2026年1月24日：
 
