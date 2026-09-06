@@ -10,6 +10,8 @@
 
 更新增加了提示词选择器和lora选择器的单选和多选切换功能，修改了多个循环器互相影响的BUG。
 
+<img src="./images/PZ MiniMax Prompt (6 Sections).png"  />
+
 2026年1月24日：
 
 更新增加了提示词循环器单独纯文本版:PZ Commander (纯文本版)
