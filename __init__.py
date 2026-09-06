@@ -2,6 +2,7 @@ from .pz_prompt import PZ_Prompt_Fixed, PZ_Prompt_Dynamic, PZ_String_Join
 from .pz_lora import PZ_LoRA_Fixed_Model, PZ_LoRA_Fixed_Full, PZ_LoRA_Dynamic_Model, PZ_LoRA_Dynamic_Full
 from .pz_easyuse import PZ_Save_Image, PZ_Resolution_Selector
 from .PZ_Full_Loader import PZ_Commander,PZ_Commander_Text
+from .pz_multibox import PZ_Commander_Text_MultiBox_V2,PZ_Commander_Text_MultiBox
 from .pz_minimax import PZ_Minimax_Prompt
 
 NODE_CLASS_MAPPINGS = {
@@ -9,6 +10,8 @@ NODE_CLASS_MAPPINGS = {
 ##    "PZ_Prompt_Fixed": PZ_Prompt_Fixed,
     "PZ_Prompt_Dynamic": PZ_Prompt_Dynamic,
     "PZ_Minimax_Prompt": PZ_Minimax_Prompt,
+    "PZ_Commander_Text_MultiBox": PZ_Commander_Text_MultiBox, # Multiple textboxes
+    "PZ_Commander_Text_MultiBox_V2": PZ_Commander_Text_MultiBox_V2, # Dynamic textboxes V2 (10 max, 2 default)
 ##    "PZ_String_Join": PZ_String_Join,
     
     # LoRA 类
@@ -33,6 +36,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 ##    "PZ_String_Join": "PZ 字符串合并",
 ##    "PZ_LoRA_Fixed_Model": "PZ LoRA组 (固定/仅模型)",
 ##    "PZ_LoRA_Fixed_Full": "PZ LoRA组 (固定/全模组)",
+    "PZ_Commander_Text_MultiBox": "📝 PZ Text MultiBox (5 Boxes)", # Multiple textboxes
+    "PZ_Commander_Text_MultiBox_V2": "📝 PZ Text MultiBox (10 Max, 2 Default)", # V2 with better UI
     "PZ_Commander": "🚀 PZ 提示词&图片循环器",
     "PZ_Minimax_Prompt": "🎬 PZ MiniMax Prompt (6 Sections)",
     "PZ_LoRA_Dynamic_Model": "PZ LoRA组 (动态/仅模型)",
