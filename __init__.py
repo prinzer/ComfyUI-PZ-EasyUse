@@ -34,7 +34,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 ##    "PZ_LoRA_Fixed_Model": "PZ LoRA组 (固定/仅模型)",
 ##    "PZ_LoRA_Fixed_Full": "PZ LoRA组 (固定/全模组)",
     "PZ_Commander": "🚀 PZ 提示词&图片循环器",
-    "PZ_Minimax_Prompt": "🎬 MiniMax Prompt (6 Sections)",
+    "PZ_Minimax_Prompt": "🎬 PZ MiniMax Prompt (6 Sections)",
     "PZ_LoRA_Dynamic_Model": "PZ LoRA组 (动态/仅模型)",
     "PZ_LoRA_Dynamic_Full": "PZ LoRA组 (动态/全模组)",
     "PZ_Save_Image": "PZ 图片保存 (增强版)",
