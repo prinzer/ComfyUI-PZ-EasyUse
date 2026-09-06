@@ -76,8 +76,15 @@ async def update_minimax_prompt(request):
     return web.json_response({"prompts": prompts, "index": index})
 
 
+def _is_local_request(request):
+    return request.remote in ("127.0.0.1", "::1")
+
+
 @PromptServer.instance.routes.delete("/pz_easyuse/minimax-prompts/{index}")
 async def delete_minimax_prompt(request):
+    if not _is_local_request(request):
+        return web.json_response({"error": "Forbidden"}, status=403)
+
     try:
         index = int(request.match_info["index"])
     except ValueError:
