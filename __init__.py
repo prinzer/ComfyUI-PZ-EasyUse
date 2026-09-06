@@ -2,11 +2,13 @@ from .pz_prompt import PZ_Prompt_Fixed, PZ_Prompt_Dynamic, PZ_String_Join
 from .pz_lora import PZ_LoRA_Fixed_Model, PZ_LoRA_Fixed_Full, PZ_LoRA_Dynamic_Model, PZ_LoRA_Dynamic_Full
 from .pz_easyuse import PZ_Save_Image, PZ_Resolution_Selector
 from .PZ_Full_Loader import PZ_Commander,PZ_Commander_Text
- 
+from .pz_minimax import PZ_Minimax_Prompt
+
 NODE_CLASS_MAPPINGS = {
     # 提示词类
 ##    "PZ_Prompt_Fixed": PZ_Prompt_Fixed,
     "PZ_Prompt_Dynamic": PZ_Prompt_Dynamic,
+    "PZ_Minimax_Prompt": PZ_Minimax_Prompt,
 ##    "PZ_String_Join": PZ_String_Join,
     
     # LoRA 类
@@ -32,6 +34,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 ##    "PZ_LoRA_Fixed_Model": "PZ LoRA组 (固定/仅模型)",
 ##    "PZ_LoRA_Fixed_Full": "PZ LoRA组 (固定/全模组)",
     "PZ_Commander": "🚀 PZ 提示词&图片循环器",
+    "PZ_Minimax_Prompt": "🎬 MiniMax Prompt (6 Sections)",
     "PZ_LoRA_Dynamic_Model": "PZ LoRA组 (动态/仅模型)",
     "PZ_LoRA_Dynamic_Full": "PZ LoRA组 (动态/全模组)",
     "PZ_Save_Image": "PZ 图片保存 (增强版)",
