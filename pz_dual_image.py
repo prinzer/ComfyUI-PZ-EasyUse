@@ -85,6 +85,38 @@ class PZ_Dual_Image_Loader:
         return (img1, mask1, text)
 
 
+class PZ_Single_Image_Loader:
+    """单图版：加载一张图 + 编辑提示词，输出该图（含提示词文本）。
+    比双图版少了图2 / output_select / edit_target / 结果图监听，只保留单图加载与编辑。"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        input_dir = folder_paths.get_input_directory()
+        files = sorted(f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f)))
+        if not files:
+            files = [""]
+        return {
+            "required": {
+                "image_1": (files, {"image_upload": True}),
+                "prompt_1": ("STRING", {"multiline": True, "default": "", "placeholder": "Edit prompt..."}),
+            },
+            "hidden": {"unique_id": "UNIQUE_ID"},
+        }
+
+    RETURN_TYPES = ("IMAGE", "MASK", "STRING")
+    RETURN_NAMES = ("image", "mask", "text")
+    FUNCTION = "load"
+    CATEGORY = "PZ EasyUse"
+
+    def load(self, image_1, prompt_1="", unique_id=None):
+        tensor, mask = load_image_tensor(image_1)
+        if unique_id is not None:
+            os.makedirs(PREVIEW_DIR, exist_ok=True)
+            frame = np.clip(tensor[0].cpu().numpy() * 255.0, 0, 255).astype(np.uint8)
+            Image.fromarray(frame).save(os.path.join(PREVIEW_DIR, f"{unique_id}_1.png"))
+        return (tensor, mask, prompt_1)
+
+
 class PZ_Listen_Marker:
     """结果图触发标记：图片透传，同时输出当前图片并广播给前端。
     开关 save_as_output 打开时等同“保存图像”（写到 output 目录），关闭时等同“预览图像”（写到临时目录）。

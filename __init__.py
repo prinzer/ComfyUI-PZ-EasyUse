@@ -5,7 +5,7 @@ from .PZ_Full_Loader import PZ_Commander, PZ_Commander_Text, PZ_Commander_Image
 from .pz_multibox import PZ_Commander_Text_MultiBox_V2,PZ_Commander_Text_MultiBox
 from .pz_minimax import PZ_Minimax_Prompt
 from .pz_universal_prompt import PZ_Universal_Prompt
-from .pz_dual_image import PZ_Dual_Image_Loader, PZ_Listen_Marker
+from .pz_dual_image import PZ_Dual_Image_Loader, PZ_Listen_Marker, PZ_Single_Image_Loader
 
 # Internationalization support
 # Note: Python side doesn't have direct access to frontend language setting
@@ -22,6 +22,7 @@ NODE_CLASS_MAPPINGS = {
     "PZ_Minimax_Prompt": PZ_Minimax_Prompt,
     "PZ_Universal_Prompt": PZ_Universal_Prompt,
     "PZ_Dual_Image_Loader": PZ_Dual_Image_Loader,
+    "PZ_Single_Image_Loader": PZ_Single_Image_Loader,
     "PZ_Listen_Marker": PZ_Listen_Marker,
     "PZ_Read_Image_Metadata": PZ_Read_Image_Metadata,
     # Loop Option B (Auto-Queue mode)
@@ -64,6 +65,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "PZ_Minimax_Prompt": "🎬 MiniMax Prompt (6 Sections)",
     "PZ_Universal_Prompt": "📝 PZ 通用提示词 (前缀/正文/后缀)",
     "PZ_Dual_Image_Loader": "🖼️ PZ 2图加载编辑 (2 In / Select Out)",
+    "PZ_Single_Image_Loader": "🖼️ PZ 单图加载编辑 (1 In)",
     "PZ_Listen_Marker": "🎯 结果图触发标记",
     "PZ_Read_Image_Metadata": "PZ Read Image Metadata"
     #"PZ_Batch_Dispatcher": "🚀 PZ Task Dispatcher (JS Version)",
