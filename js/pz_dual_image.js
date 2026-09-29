@@ -688,20 +688,28 @@ app.registerExtension({
             };
 
             let autoFitDone = false;
+            const autoFitDeadline = Date.now() + 8000;
             const syncHeight = () => {
                 const top = Number(layout.last_y);
                 container.style.height = Number.isFinite(top) && top > 0 ? `${Math.max(120, node.size[1] - top - 10)}px` : "280px";
             };
-            // 新建节点时按内容把节点撑高，避免自定义界面被节点底部裁掉
+            // 新建节点时按内容把节点撑高，避免自定义界面被节点底部裁掉。
+            // 内容可能还没布局完（首次测量偏小），所以 8 秒内会持续重试，直到“内容放得下”或超时
             const autoFitHeight = () => {
                 if (autoFitDone) return syncHeight();
                 const top = Number(layout.last_y);
                 if (!Number.isFinite(top) || top <= 0) return;
+                const previous = container.style.height;
                 container.style.height = "auto";
                 const needed = container.scrollHeight || 0;
-                autoFitDone = true;
-                if (needed > 0 && top + needed + 12 > node.size[1]) {
-                    node.setSize([node.size[0], Math.ceil(top + needed + 12)]);
+                container.style.height = previous;
+                if (!needed) return;
+                const required = top + needed + 12;
+                if (required > node.size[1]) {
+                    node.setSize([node.size[0], Math.ceil(required)]);
+                    autoFitDone = true;
+                } else if (Date.now() > autoFitDeadline) {
+                    autoFitDone = true; // 超时就不再折腾，交给手动缩放
                 }
                 syncHeight();
             };
@@ -719,6 +727,8 @@ app.registerExtension({
                     lastSyncKey = key;
                     syncHeight();
                 }
+                // 首次拿到 last_y 之前自适应不会生效，这里补一次，避免界面被裁掉
+                if (!autoFitDone) autoFitHeight();
                 return originalDrawForeground?.apply(this, args);
             };
 
