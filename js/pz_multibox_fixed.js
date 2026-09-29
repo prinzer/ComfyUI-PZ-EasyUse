@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { mountTagPickerDialog, createOpenFolderButton } from "./pz_tag_library.js";
 
 const NODE_TYPE = "PZ_Commander_Text_MultiBox";
 const BOX_COUNT = 5;
@@ -65,10 +66,10 @@ app.registerExtension({
             const node = this;
             const editors = [];
             const enableInputs = [];
-            node.setSize?.([680, 980]);
+            node.setSize?.([750, 600]);
 
             const container = document.createElement("div");
-            container.style.cssText = "display:flex;flex-direction:column;width:100%;height:100%;padding:8px 0;box-sizing:border-box;overflow:auto;";
+            container.style.cssText = "display:flex;gap:10px;width:100%;height:100%;padding:8px 0;box-sizing:border-box;overflow:hidden;";
             const style = document.createElement("style");
             style.textContent = `
                 .pz-multibox-button { border:1px solid color-mix(in srgb, var(--border-color) 75%, #6ea8fe); border-radius:6px; background:linear-gradient(180deg, color-mix(in srgb, var(--comfy-input-bg) 92%, #6ea8fe), var(--comfy-input-bg)); color:var(--input-text); cursor:pointer; font:inherit; font-size:11px; line-height:1.2; transition:border-color 120ms ease, background 120ms ease, transform 120ms ease; }
@@ -78,32 +79,68 @@ app.registerExtension({
                 .pz-multibox-action { flex:1 1 105px; min-height:29px; padding:6px 8px; white-space:nowrap; }
             `;
             container.appendChild(style);
+
+            const leftColumn = document.createElement("div");
+            leftColumn.style.cssText = "display:flex;flex-direction:column;gap:6px;flex:0 0 260px;min-width:0;min-height:0;overflow:hidden;padding-right:4px;";
+
+            const rightColumn = document.createElement("div");
+            rightColumn.style.cssText = "display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden;gap:6px;";
+
+            container.append(leftColumn, rightColumn);
+
             const layout = node.addDOMWidget("pz_fixed_multibox_layout", "multibox", container);
-            layout.computeSize = () => [node.size[0], Math.max(300, node.size[1] - 90)];
+            node._pzFixedLayoutWidget = layout;
+            layout.computeSize = () => [node.size[0], 1];
+            
+            // ---- Move prefix/suffix before DOM widget (show at top, allow connections) ----
+            const prefixWidget = widget(node, "prompt_prefix");
+            const suffixWidget = widget(node, "prompt_suffix");
+            
             const layoutIndex = node.widgets.indexOf(layout);
             if (layoutIndex > 0) {
                 node.widgets.splice(layoutIndex, 1);
                 node.widgets.unshift(layout);
             }
+            
+            // Move prefix/suffix to before DOM widget (index 0 and 1)
+            [prefixWidget, suffixWidget].forEach((w, i) => {
+                if (!w) return;
+                const idx = node.widgets.indexOf(w);
+                if (idx >= 0) {
+                    node.widgets.splice(idx, 1);
+                    node.widgets.splice(i, 0, w);
+                }
+            });
 
-            const header = document.createElement("div");
-            header.textContent = "Text Boxes (5 fixed) | 常用提示词标签 / Common Prompt Tags";
-            header.style.cssText = "font-size:12px;font-weight:600;margin:4px 0 8px;color:var(--fg-color);";
-            container.appendChild(header);
+            const syncFixedLayoutHeight = () => {
+                const layoutTop = Number(layout?.last_y);
+                if (!Number.isFinite(layoutTop)) {
+                    container.style.height = "600px";
+                    return;
+                }
+                const availableHeight = node.size[1] - layoutTop - 8;
+                container.style.height = `${Math.max(300, availableHeight)}px`;
+            };
 
             let activeEditor = null;
             const renderedCustomTags = new Set();
-            const tagBar = document.createElement("div");
-            tagBar.style.cssText = "display:flex;flex-wrap:wrap;gap:5px;width:100%;padding:7px;margin-bottom:7px;border:1px solid var(--border-color);border-radius:6px;background:color-mix(in srgb, var(--comfy-input-bg) 65%, transparent);box-sizing:border-box;";
             const editorRef = { get current() { return activeEditor || editors.find(Boolean); } };
+
+            // ---- Left column: tags ----
+            const tagTitle = document.createElement("div");
+            tagTitle.textContent = "常用提示词标签 / Common Prompt Tags";
+            tagTitle.style.cssText = "font-size:12px;font-weight:600;color:var(--fg-color);";
+            const tagBar = document.createElement("div");
+            tagBar.style.cssText = "display:flex;flex-wrap:wrap;gap:5px;width:100%;padding:7px;border:1px solid var(--border-color);border-radius:6px;background:color-mix(in srgb, var(--comfy-input-bg) 65%, transparent);box-sizing:border-box;";
             for (const tag of COMMON_TAGS) {
                 const button = makeButton(tag, "pz-multibox-tag");
                 button.title = `插入 ${tag}`;
                 button.addEventListener("click", () => insertTag(editorRef.current, tag));
                 tagBar.appendChild(button);
             }
+
             const customRow = document.createElement("div");
-            customRow.style.cssText = "display:flex;gap:5px;width:100%;margin-bottom:7px;";
+            customRow.style.cssText = "display:flex;gap:5px;width:100%;";
             const customInput = document.createElement("input");
             customInput.placeholder = "输入自定义标签 / Custom tag";
             customInput.style.cssText = "flex:1;min-width:0;padding:7px 9px;border:1px solid var(--border-color);border-radius:6px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;box-sizing:border-box;";
@@ -144,39 +181,70 @@ app.registerExtension({
                 if (event.key === "Enter") { event.preventDefault(); addCustomTag(); }
             });
             customRow.append(customInput, addTagButton);
-            container.append(tagBar, customRow);
             for (const tag of node.properties?.pzMultiBoxCustomTags || []) renderCustomTag(tag);
 
+            leftColumn.append(tagTitle, tagBar, customRow);
+
+            // ---- Tag library search ----
+            const tagPickerJson = mountTagPickerDialog(editorRef, customInput, "json");
+            document.body.appendChild(tagPickerJson.dialog);
+            const searchJsonButton = makeButton("🔍 搜索标签 (JSON)", "pz-multibox-action");
+            searchJsonButton.addEventListener("click", () => tagPickerJson.open());
+
+            const tagPickerCsv = mountTagPickerDialog(editorRef, customInput, "csv");
+            document.body.appendChild(tagPickerCsv.dialog);
+            const searchCsvButton = makeButton("🔍 搜索标签  (CSV)", "pz-multibox-action");
+            searchCsvButton.addEventListener("click", () => tagPickerCsv.open());
+
+            const searchRow = document.createElement("div");
+            searchRow.style.cssText = "display:flex;gap:5px;width:100%;";
+            searchJsonButton.style.cssText += ";flex:1;height:29px;";
+            searchCsvButton.style.cssText += ";flex:1;height:29px;";
+            searchRow.append(searchJsonButton, searchCsvButton);
+            leftColumn.appendChild(searchRow);
+
+            // ---- UI Divider between tags and preview sections ----
+            const sectionDivider = document.createElement("div");
+            sectionDivider.style.cssText = "height:1px;background:var(--border-color);margin:8px 0;flex:0 0 auto;";
+            leftColumn.appendChild(sectionDivider);
+            
+            // ---- Saved prompts navigation ----
             let savedPrompts = [];
             let savedPromptIndex = -1;
             let currentPreviewBoxes = [];
             const savedTitle = document.createElement("div");
-            savedTitle.textContent = "提示词保存 / Saved Prompts (仅加载和修改)";
-            savedTitle.style.cssText = "font-size:12px;font-weight:600;margin:4px 0 6px;color:var(--fg-color);";
+            savedTitle.textContent = "提示词预览 / Prompt Preview";
+            savedTitle.style.cssText = "font-size:12px;font-weight:600;color:var(--fg-color);";
             const savedStatus = document.createElement("span");
             savedStatus.style.cssText = "margin-left:6px;font-size:10px;color:var(--desc-text);font-weight:normal;";
             savedTitle.appendChild(savedStatus);
             const savedRow = document.createElement("div");
-            savedRow.style.cssText = "display:flex;flex-wrap:wrap;gap:5px;width:100%;margin-bottom:7px;";
+            savedRow.style.cssText = "display:flex;flex-wrap:wrap;gap:5px;width:100%;";
             const savedTitleDisplay = document.createElement("div");
             savedTitleDisplay.style.cssText = "flex:1 1 100%;min-width:120px;padding:7px 9px;border:1px solid var(--border-color);border-radius:6px;background:color-mix(in srgb, var(--comfy-input-bg) 70%, transparent);color:var(--input-text);font:inherit;font-size:11px;box-sizing:border-box;user-select:text;";
             const previousButton = makeButton("上一个 / Previous", "pz-multibox-action");
             const nextButton = makeButton("下一个 / Next", "pz-multibox-action");
             savedRow.append(savedTitleDisplay, previousButton, nextButton);
-            container.append(savedTitle, savedRow);
+            leftColumn.append(savedTitle, savedRow);
 
+            // ---- Prompt preview (dynamic height) ----
             const previewDetails = document.createElement("details");
             previewDetails.open = true;
-            previewDetails.style.cssText = "width:100%;margin-bottom:8px;border:1px solid var(--border-color);border-radius:6px;background:color-mix(in srgb, var(--comfy-input-bg) 65%, transparent);box-sizing:border-box;";
+            previewDetails.style.cssText = "display:flex;flex-direction:column;flex:1;min-height:120px;width:100%;overflow:hidden;border:1px solid var(--border-color);border-radius:6px;background:color-mix(in srgb, var(--comfy-input-bg) 65%, transparent);box-sizing:border-box;";
             const previewSummary = document.createElement("summary");
-            previewSummary.textContent = "提示词预览 / Prompt Preview（每个 Box 可单独加载）";
-            previewSummary.style.cssText = "padding:7px 9px;color:var(--fg-color);font-size:12px;font-weight:600;cursor:pointer;user-select:none;";
+            previewSummary.textContent = "提示词预览 / Prompt Preview";
+            previewSummary.style.cssText = "padding:7px 9px;color:var(--fg-color);font-size:12px;font-weight:600;cursor:pointer;user-select:none;flex:0 0 auto;";
             const previewEditor = document.createElement("textarea");
             previewEditor.readOnly = true;
             previewEditor.placeholder = "请选择一条保存记录...";
-            previewEditor.style.cssText = "display:block;width:calc(100% - 14px);height:120px;margin:0 7px 7px;box-sizing:border-box;resize:vertical;padding:8px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.4;";
+            previewEditor.style.cssText = "display:block;width:calc(100% - 14px);flex:1;min-height:100px;margin:0 7px 7px;box-sizing:border-box;resize:none;padding:8px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.4;";
             previewDetails.append(previewSummary, previewEditor);
-            container.appendChild(previewDetails);
+            leftColumn.appendChild(previewDetails);
+
+            // ---- Open folder button (bottom) ----
+            const openFolderButton = createOpenFolderButton();
+            openFolderButton.style.flexShrink = "0";
+            leftColumn.appendChild(openFolderButton);
 
             const updateSavedStatus = () => {
                 savedStatus.textContent = savedPrompts.length ? `${savedPromptIndex + 1}/${savedPrompts.length}` : "暂无记录 / Empty";
@@ -246,6 +314,12 @@ app.registerExtension({
             previousButton.addEventListener("click", () => moveSavedPrompt(-1));
             nextButton.addEventListener("click", () => moveSavedPrompt(1));
 
+            // ---- Right column: text box editors ----
+            const rightHeader = document.createElement("div");
+            rightHeader.textContent = "Text Boxes (5 fixed)";
+            rightHeader.style.cssText = "font-size:12px;font-weight:600;margin:4px 0 8px;color:var(--fg-color);flex:0 0 auto;";
+            rightColumn.appendChild(rightHeader);
+
             for (let index = 0; index < BOX_COUNT; index++) {
                 const textWidget = widget(node, `prompt_box_${index}`);
                 const enableWidget = widget(node, `enable_box_${index}`);
@@ -254,7 +328,7 @@ app.registerExtension({
                 if (!textWidget) continue;
 
                 const row = document.createElement("div");
-                row.style.cssText = "display:flex;flex:1;min-height:0;gap:8px;align-items:stretch;width:100%;box-sizing:border-box;padding:8px;margin-bottom:6px;border:1px solid var(--border-color);border-radius:6px;";
+                row.style.cssText = "display:flex;flex:1;min-height:0;gap:8px;align-items:stretch;width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--border-color);border-radius:6px;";
                 const label = document.createElement("span");
                 label.textContent = `Promp ${index + 1}`;
                 label.style.cssText = "padding:0 0 5px;font-size:11px;color:var(--desc-text);font-weight:600;text-align:center;white-space:nowrap;";
@@ -287,14 +361,15 @@ app.registerExtension({
                 boxHeader.append(label, enableInput);
                 boxControls.append(boxHeader, loadBoxButton);
                 row.append(editorContainer, boxControls);
-                container.appendChild(row);
+                rightColumn.appendChild(row);
             }
 
-            node.setSize?.([Math.max(420, node.size[0]), 520]);
+            node.setSize?.([Math.max(750, node.size[0]), 600]);
             const originalResize = node.onResize;
             node.onResize = function (size) {
                 originalResize?.apply(this, arguments);
-                container.style.height = `${Math.max(300, size[1] - 90)}px`;
+                syncFixedLayoutHeight();
+                node.setDirtyCanvas?.(true, true);
             };
 
             const originalConfigure = node.configure;
@@ -309,7 +384,10 @@ app.registerExtension({
                 refreshSavedPrompts();
                 return configured;
             };
-            container.style.height = "430px";
+            setTimeout(() => {
+                syncFixedLayoutHeight();
+                node.setDirtyCanvas?.(true, true);
+            }, 0);
             refreshSavedPrompts();
             updateSavedStatus();
             node.setDirtyCanvas?.(true, true);

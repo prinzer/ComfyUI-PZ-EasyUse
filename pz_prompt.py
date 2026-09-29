@@ -58,6 +58,41 @@ class PZ_Prompt_Dynamic:
         if 前缀: result = f"{前缀}, {result}" if result else 前缀
         return (result,)
 
+class PZ_Prompt_Dynamic_ML:
+    def __init__(self): pass
+    @classmethod
+    def INPUT_TYPES(s):
+        required_inputs = {
+            "模式": (["多选叠加 (Multi)", "单选互斥 (Radio)"], {"default": "多选叠加 (Multi)"}),
+        }
+        for i in range(1, 51):
+            default_state = True if i == 1 else False
+            required_inputs[f"[{i:02d}] 标题"] = ("STRING", {"default": "", "multiline": False})
+            required_inputs[f"[{i:02d}] 生效"] = ("BOOLEAN", {"default": default_state, "label_on": "🟢 开启", "label_off": "⚪ 关闭"})
+            required_inputs[f"[{i:02d}] 提示词"] = ("STRING", {"default": "", "multiline": True})
+        return {"required": required_inputs, "optional": {"前缀": ("STRING", {"forceInput": True})}}
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("text",)
+    FUNCTION = "process"
+    CATEGORY = "PZ EasyUse"
+    
+    def process(self, 前缀=None, 模式="多选叠加 (Multi)", **kwargs):
+        valid_prompts = []
+        is_radio = "Radio" in 模式
+        
+        for i in range(1, 51):
+            is_active = kwargs.get(f"[{i:02d}] 生效", False)
+            text = kwargs.get(f"[{i:02d}] 提示词", "").strip()
+            
+            if is_active and text:
+                valid_prompts.append(text)
+                if is_radio:
+                    break 
+        
+        result = ", ".join(valid_prompts)
+        if 前缀: result = f"{前缀}, {result}" if result else 前缀
+        return (result,)
+
 class PZ_String_Join:
     def __init__(self): pass
     @classmethod
