@@ -21,12 +21,12 @@
 
 更新增加了一个MINIMAX H3 手写提示词小工具PZ MiniMax Prompt (6 Sections)，可以自定义标签快速输入，根据推荐提示词格式分区书写，提示词可以保存在input文件夹下json文件，可导出导入。
 
-
+<img src="./images/minimax-6.png" />
 
 2026年9月6日：
 
 更新增加了一个MINIMAX H3 提示词批量循环任务的专用节点PZ text multibox，功能类同Iterate (JS Loop)：经典的“JS 帮你按多次按钮”。区别是这个可以直接快速加载PZ MiniMax Prompt保存的提示词。 分固定5个textbox和动态增加textbox两个版本，textbox单独有生效开关。
-<img src="./images/minimax-6.png" />
+<img src="./minimax提示词组循环批量5.png" />
 
 
 2026年1月25日：
