@@ -26,7 +26,7 @@
 2026年9月6日：
 
 更新增加了一个MINIMAX H3 提示词批量循环任务的专用节点PZ text multibox，功能类同Iterate (JS Loop)：经典的“JS 帮你按多次按钮”。区别是这个可以直接快速加载PZ MiniMax Prompt保存的提示词。 分固定5个textbox和动态增加textbox两个版本，textbox单独有生效开关。
-<img src="./minimax提示词组循环批量5.png" />
+<img src="./images/minimax提示词组循环批量5.png" />
 
 
 2026年1月25日：
