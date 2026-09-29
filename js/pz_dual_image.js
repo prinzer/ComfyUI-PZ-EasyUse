@@ -2,6 +2,7 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
 const NODE_TYPE = "PZ_Dual_Image_Loader";
+const SINGLE_NODE_TYPE = "PZ_Single_Image_Loader";
 const MARKER_NODE_TYPE = "PZ_Listen_Marker";
 
 let fileListCache = null;
@@ -49,7 +50,7 @@ app.registerExtension({
     name: "PZ.DualImage",
 
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeData.name !== NODE_TYPE) return;
+        if (nodeData.name !== NODE_TYPE && nodeData.name !== SINGLE_NODE_TYPE) return;
 
         // 新版前端内置扩展 Comfy.UploadImage 会为 image_upload 输入自动注入
         // 一个 name="upload" 的 IMAGEUPLOAD 控件（顶部“选择上传按钮 + 图片选择行”），
@@ -63,6 +64,8 @@ app.registerExtension({
         nodeType.prototype.onNodeCreated = function () {
             const result = originalCreated?.apply(this, arguments);
             const node = this;
+            const IS_SINGLE = nodeData.name === SINGLE_NODE_TYPE;
+            const slotNumbers = IS_SINGLE ? [1] : [1, 2];
             node.setSize?.([520, 560]);
 
             const widget1 = node.widgets?.find((w) => w.name === "image_1");
@@ -79,11 +82,12 @@ app.registerExtension({
             const style = document.createElement("style");
             style.textContent = `.pz-di-box { display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;gap:5px;padding:6px;border:1px solid var(--border-color);border-radius:6px;box-sizing:border-box; } .pz-di-box.pz-di-active { border-color:#e8a33d; } .pz-di-box.pz-di-editing { box-shadow:inset 0 0 0 1px #e8a33d; } .pz-di-box.pz-di-dragover { border-color:#6ea8fe;box-shadow:0 0 0 2px rgba(110,168,254,.45); } .pz-di-header { display:flex;align-items:center;justify-content:space-between;gap:4px;font-size:11px;font-weight:600;color:var(--fg-color); } .pz-di-badge { font-size:10px;font-weight:normal;color:var(--desc-text);padding:1px 6px;border:1px solid var(--border-color);border-radius:8px;white-space:nowrap; } .pz-di-badge.pz-di-linked { color:#35a66f;border-color:#35a66f; } .pz-di-wrap { position:relative;flex:1;min-height:0;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);overflow:hidden;cursor:pointer; } .pz-di-preview { width:100%;height:100%;object-fit:contain;display:block; } .pz-di-placeholder { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--desc-text);pointer-events:none;text-align:center;padding:4px;box-sizing:border-box; } .pz-di-select { width:100%;padding:5px 6px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;box-sizing:border-box;cursor:pointer; } .pz-di-text { width:100%;flex:0 0 64px;min-height:0;box-sizing:border-box;resize:none;padding:5px 6px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.35; } .pz-di-targetrow { display:flex;align-items:center;gap:5px;flex:0 0 auto; } .pz-di-targetrow > span { font-size:11px;font-weight:600;color:var(--fg-color);margin-right:2px;white-space:nowrap; } .pz-di-target { flex:0 0 auto;padding:4px 8px;border:1px solid var(--border-color);border-radius:6px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.2;cursor:pointer;white-space:nowrap; } .pz-di-target.pz-di-target-on { border-color:#e8a33d;color:#e8a33d; } .pz-di-uploadrow { display:flex;align-items:center;gap:8px;flex:0 0 auto; } .pz-di-upload { flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border-color);border-radius:6px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.2;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; } .pz-di-upload:hover:not(:disabled) { border-color:#6ea8fe; } .pz-di-upload:disabled { opacity:.45;cursor:default; } .pz-di-boxesrow { display:flex;gap:8px;flex:1;min-height:0; } .pz-di-roundrow { display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto;padding-top:2px; } .pz-di-roundgroup { display:flex;align-items:center;gap:5px;flex:0 0 auto; } .pz-di-listenrow { display:flex;align-items:center;gap:4px;flex:1;min-width:0; } .pz-di-listenlabel { font-size:10px;color:var(--desc-text);white-space:nowrap; } .pz-di-listen { flex:1;min-width:0;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:10px;line-height:1.2;box-sizing:border-box;cursor:pointer; } .pz-di-listen:disabled { opacity:.6;cursor:default; } .pz-di-sub { flex:0 0 auto;font-size:10px;color:var(--desc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%; } .pz-di-note { flex:0 0 auto;font-size:10px;line-height:1.35;color:var(--desc-text);padding-top:1px;overflow:hidden; } .pz-di-progressrow { display:flex;align-items:center;gap:6px;flex:0 0 auto;padding-top:2px; } .pz-di-progress { flex:1;min-width:0;height:7px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);overflow:hidden;box-sizing:border-box; } .pz-di-progressfill { width:0%;height:100%;background:#6ea8fe;transition:width .12s linear; } .pz-di-progresstext { flex:0 1 auto;max-width:52%;min-width:32px;text-align:right;font-size:10px;color:var(--desc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; } .pz-di-timer { flex:0 0 auto;font-size:10px;color:var(--desc-text);white-space:nowrap; } .pz-di-round { padding:4px 9px;border:1px solid var(--border-color);border-radius:6px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.2;cursor:pointer;white-space:nowrap; } .pz-di-round:hover:not(:disabled) { border-color:#6ea8fe; } .pz-di-round:disabled { opacity:.45;cursor:default; } .pz-di-roundlabel { font-size:10px;color:var(--desc-text);white-space:nowrap; } .pz-di-run { padding:4px 12px;border:1px solid #35a66f;border-radius:6px;background:#35a66f;color:#fff;font:inherit;font-size:11px;font-weight:600;line-height:1.2;cursor:pointer;white-space:nowrap; } .pz-di-run:hover { filter:brightness(1.08); } .pz-di-run:active { filter:brightness(.92); }`;
             container.appendChild(style);
+            style.textContent += " .pz-di-compare-btn.pz-di-active{border-color:#e8a33d;color:#e8a33d;}";
 
             // 顶部：两个“选择上传图片”按钮
             const uploadRow = document.createElement("div");
             uploadRow.className = "pz-di-uploadrow";
-            const uploadButtons = [1, 2].map((slotNumber) => {
+            const uploadButtons = slotNumbers.map((slotNumber) => {
                 const button = document.createElement("button");
                 button.type = "button";
                 button.className = "pz-di-upload";
@@ -91,10 +95,10 @@ app.registerExtension({
                 button.title = `为图${slotNumber}选择并上传图片 / Choose & upload image ${slotNumber}`;
                 return button;
             });
-            uploadRow.append(uploadButtons[0], uploadButtons[1]);
+            uploadRow.append(...uploadButtons.filter(Boolean));
 
             // “编辑图*”按钮：放到各自的文本行（提示词输入框）下面
-            const targetButtons = [1, 2].map((slotNumber) => {
+            const targetButtons = slotNumbers.map((slotNumber) => {
                 const button = document.createElement("button");
                 button.type = "button";
                 button.className = "pz-di-target";
@@ -108,19 +112,22 @@ app.registerExtension({
             // 底部一行：左侧“监听节点”下拉，右侧“上一轮 / 下一轮 / 运行”
             const roundRow = document.createElement("div");
             roundRow.className = "pz-di-roundrow";
+            roundRow.style.cssText = "display:flex;align-items:center;gap:6px;";
 
             const listenWrap = document.createElement("div");
-            listenWrap.className = "pz-di-listenrow";
+            listenWrap.style.cssText = "display:flex;align-items:center;gap:6px;";
             const listenTitle = document.createElement("span");
-            listenTitle.className = "pz-di-listenlabel";
-            listenTitle.textContent = "监听";
+            listenTitle.textContent = "结果图源：";
+            listenTitle.style.cssText = "font-size:12px;color:#cfd6e4;white-space:nowrap;";
             const listenSelect = document.createElement("select");
-            listenSelect.className = "pz-di-listen";
+            listenSelect.className = "pz-di-listen-select single";
+            listenSelect.style.cssText = "flex:1;min-width:0;font-size:12px;background:#23262e;color:#e6e9ef;border:1px solid #39414f;border-radius:6px;padding:2px 4px;";
             listenSelect.title = "选择要监听的节点（所有保存图片 / 监听标记节点）/ Node to listen";
             listenWrap.append(listenTitle, listenSelect);
 
             const restWrap = document.createElement("div");
             restWrap.className = "pz-di-roundgroup";
+            restWrap.style.cssText = "flex:1;display:flex;justify-content:center;align-items:center;gap:6px;";
             const prevRoundButton = document.createElement("button");
             prevRoundButton.type = "button";
             prevRoundButton.className = "pz-di-round";
@@ -140,7 +147,114 @@ app.registerExtension({
             runButton.textContent = "▶ 运行";
             runButton.title = "等同于工具栏的运行 / Run (Queue Prompt)";
             restWrap.append(prevRoundButton, roundLabel, nextRoundButton, runButton);
-            roundRow.append(listenWrap, restWrap);
+
+            // 单图版：加载图监听下拉（选择工作流中的图片加载节点，自动同步其第一张图作为编辑源）
+            const loadListenWrap = document.createElement("div");
+            loadListenWrap.style.cssText = "display:flex;align-items:center;gap:6px;";
+            const loadListenLabel = document.createElement("span");
+            loadListenLabel.textContent = "加载图源：";
+            loadListenLabel.style.cssText = "font-size:12px;color:#cfd6e4;white-space:nowrap;";
+            const loadListenSelect = document.createElement("select");
+            loadListenSelect.className = "pz-di-listen-select single";
+            loadListenSelect.style.cssText = "flex:1;min-width:0;font-size:12px;background:#23262e;color:#e6e9ef;border:1px solid #39414f;border-radius:6px;padding:2px 4px;";
+            loadListenWrap.append(loadListenLabel, loadListenSelect);
+
+            // 单图版：提示词源监听下拉（选择工作流中的提示词文本节点，同步其文本作为编辑提示词）
+            const promptListenWrap = document.createElement("div");
+            promptListenWrap.style.cssText = "display:flex;align-items:center;gap:6px;";
+            const promptListenLabel = document.createElement("span");
+            promptListenLabel.textContent = "提示词源：";
+            promptListenLabel.style.cssText = "font-size:12px;color:#cfd6e4;white-space:nowrap;";
+            const promptListenSelect = document.createElement("select");
+            promptListenSelect.className = "pz-di-listen-select single";
+            promptListenSelect.style.cssText = "flex:1;min-width:0;font-size:12px;background:#23262e;color:#e6e9ef;border:1px solid #39414f;border-radius:6px;padding:2px 4px;";
+            promptListenWrap.append(promptListenLabel, promptListenSelect);
+
+            roundRow.append(...(IS_SINGLE ? [restWrap] : [listenWrap, restWrap]));
+
+            // —— 单图版“劫持”加载图片节点：监听即夺取其图作为编辑源，随加载节点 image 变化实时跟随 ——
+            let hijackedWidget = null;
+            let hijackSync = null;
+            const detachHijack = () => {
+                if (hijackedWidget && hijackSync && hijackedWidget.__pzHijackers) {
+                    hijackedWidget.__pzHijackers.delete(hijackSync);
+                }
+                hijackedWidget = null;
+                hijackSync = null;
+            };
+            const attachHijack = (loadId) => {
+                if (!IS_SINGLE || !loadId) return;
+                detachHijack();
+                const loader = (app.graph?._nodes || []).find((n) => String(n.id) === loadId);
+                const w = loader?.widgets?.find((x) => x.name === "image");
+                if (!w) return;
+                const syncFn = () => {
+                    const img = w.value;
+                    if (img) {
+                        widget1.value = img;
+                        widget1.callback?.call(widget1, img);
+                        refreshFilePreview(slots[0]);
+                    }
+                };
+                w.__pzHijackers = w.__pzHijackers || new Set();
+                w.__pzHijackers.add(syncFn);
+                if (!w.__pzHijackWrapped) {
+                    w.__pzHijackOrig = w.callback;
+                    w.callback = function (...args) {
+                        const r = w.__pzHijackOrig?.apply(this, args);
+                        (w.__pzHijackers || []).forEach((fn) => fn());
+                        return r;
+                    };
+                    w.__pzHijackWrapped = true;
+                }
+                hijackedWidget = w;
+                hijackSync = syncFn;
+                syncFn(); // 立即同步一次（不连线、不执行即可用）
+            };
+
+            // —— 单图版“劫持”提示词文本节点：监听即夺取其文本作为编辑提示词，实时跟随 ——
+            let hijackedPromptWidget = null;
+            let hijackPromptSync = null;
+            const detachPromptHijack = () => {
+                if (hijackedPromptWidget && hijackPromptSync && hijackedPromptWidget.__pzPromptHijackers) {
+                    hijackedPromptWidget.__pzPromptHijackers.delete(hijackPromptSync);
+                }
+                hijackedPromptWidget = null;
+                hijackPromptSync = null;
+            };
+            const attachPromptHijack = (promptId) => {
+                if (!IS_SINGLE || !promptId) return;
+                detachPromptHijack();
+                const src = (app.graph?._nodes || []).find((n) => String(n.id) === promptId);
+                const w = findPromptTextWidget(src);
+                if (!w) return;
+                const pw = prompt1Widget;
+                const syncFn = () => {
+                    const txt = w.value;
+                    if (typeof txt !== "string") return;
+                    if (pw && pw.value !== txt) {
+                        pw.value = txt;
+                        pw.callback?.call(pw, txt);
+                    }
+                    // 同步到单图版可见的自定义提示词输入框
+                    const ta = slots[0]?.textarea;
+                    if (ta && ta.value !== txt) ta.value = txt;
+                };
+                w.__pzPromptHijackers = w.__pzPromptHijackers || new Set();
+                w.__pzPromptHijackers.add(syncFn);
+                if (!w.__pzPromptHijackWrapped) {
+                    w.__pzPromptHijackOrig = w.callback;
+                    w.callback = function (...args) {
+                        const r = w.__pzPromptHijackOrig?.apply(this, args);
+                        (w.__pzPromptHijackers || []).forEach((fn) => fn());
+                        return r;
+                    };
+                    w.__pzPromptHijackWrapped = true;
+                }
+                hijackedPromptWidget = w;
+                hijackPromptSync = syncFn;
+                syncFn(); // 立即同步一次
+            };
 
             // 进度条行（跟随 ComfyUI 本次任务的进度）
             const progressRow = document.createElement("div");
@@ -160,7 +274,7 @@ app.registerExtension({
 
             const noteRow = document.createElement("div");
             noteRow.className = "pz-di-note";
-            noteRow.textContent = " PS:结果图在生成完成后自动回流到图2区域，可直接继续编辑。";
+            noteRow.textContent = IS_SINGLE ? " PS:单图模式：运行后结果图会自动回显到上方预览区，可继续下一轮编辑。" : " PS:结果图在生成完成后自动回流到图2区域，可直接继续编辑。";
 
             container.append(uploadRow, boxesRow, roundRow, progressRow, noteRow);
 
@@ -181,7 +295,7 @@ app.registerExtension({
             applyHiddenWidgets();
             setTimeout(applyHiddenWidgets, 0);
 
-            const slots = [1, 2].map((slotNumber) => {
+            const slots = slotNumbers.map((slotNumber) => {
                 const box = document.createElement("div");
                 box.className = "pz-di-box";
                 const header = document.createElement("div");
@@ -216,11 +330,108 @@ app.registerExtension({
                 textarea.className = "pz-di-text";
                 textarea.placeholder = `编辑指令 ${slotNumber} / Edit prompt ${slotNumber}`;
                 textarea.value = (slotNumber === 1 ? prompt1Widget : prompt2Widget)?.value || "";
-                const children = [header, subtitle, wrap, fileSelect, textarea, targetButtons[slotNumber - 1], fileInput];
+                const children = IS_SINGLE ? [header, subtitle, wrap, fileSelect] : [header, subtitle, wrap, fileSelect, textarea];
+                if (!IS_SINGLE) children.push(targetButtons[slotNumber - 1]);
+                children.push(fileInput);
                 box.append(...children);
                 boxesRow.appendChild(box);
                 return { slotNumber, box, badge, wrap, preview, placeholder, fileSelect, fileInput, textarea, subtitle };
             });
+            // 单图版：左侧“上一轮图”下方放三个加载源选择行；右侧“当前图”下方放提示词区，二者等高对齐
+            if (IS_SINGLE) {
+                const listenPanel = document.createElement("div");
+                listenPanel.style.cssText = "display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;";
+                listenPanel.append(loadListenWrap, promptListenWrap, listenWrap);
+                const promptPanel = document.createElement("div");
+                promptPanel.style.cssText = "flex:1;min-width:0;display:flex;";
+                const ta = slots[0].textarea;
+                ta.style.flex = "1";
+                ta.style.minHeight = "0";
+                ta.style.height = "100%";
+                promptPanel.append(ta);
+                const sourceRow = document.createElement("div");
+                sourceRow.className = "pz-di-sourcerow";
+                sourceRow.style.cssText = "display:flex;gap:8px;align-items:stretch;flex:0 0 auto;margin-top:4px;";
+                sourceRow.append(listenPanel, promptPanel);
+                container.insertBefore(sourceRow, roundRow);
+            }
+
+            // ===== 单图版对照模式：左侧并排显示“上一轮”，翻轮次时两图同步 =====
+            // 初始默认对照模式：未在工作流里显式保存过 pz_compare 时（新建节点）默认开启对照；
+            // 若用户曾手动“退出对照”并把 pz_compare 存为 false，则尊重该选择
+            let compareMode = node.properties.pz_compare === undefined ? true : !!node.properties.pz_compare;
+            let compareSlot = null;
+            if (IS_SINGLE) {
+                const cbox = document.createElement("div");
+                cbox.className = "pz-di-box pz-di-compare";
+                const cheader = document.createElement("div");
+                cheader.className = "pz-di-header";
+                const clabel = document.createElement("span");
+                clabel.textContent = "上一轮 / Prev";
+                const csub = document.createElement("div");
+                csub.className = "pz-di-sub";
+                csub.textContent = "上一轮：—";
+                const cwrap = document.createElement("div");
+                cwrap.className = "pz-di-wrap";
+                cwrap.style.cursor = "default";
+                const cpreview = document.createElement("img");
+                cpreview.className = "pz-di-preview";
+                cpreview.alt = "";
+                const cph = document.createElement("div");
+                cph.className = "pz-di-placeholder";
+                cph.textContent = "已是首轮 / First round";
+                cwrap.append(cpreview, cph);
+                cheader.append(clabel);
+                cbox.append(cheader, csub, cwrap);
+                compareSlot = { box: cbox, header: cheader, label: clabel, subtitle: csub, wrap: cwrap, preview: cpreview, placeholder: cph };
+            }
+            const refreshCompare = () => {
+                if (!IS_SINGLE || !compareMode || !compareSlot) return;
+                const list = roundsList();
+                const idx = roundIndex();
+                const prev = idx - 1;
+                const name = prev >= 0 ? list[prev] : null;
+                if (name) {
+                    compareSlot.preview.src = viewUrl(name);
+                    compareSlot.preview.style.display = "";
+                    compareSlot.placeholder.style.display = "none";
+                    compareSlot.subtitle.textContent = `上一轮：${name}`;
+                } else {
+                    compareSlot.preview.removeAttribute("src");
+                    compareSlot.preview.style.display = "none";
+                    compareSlot.placeholder.style.display = "";
+                    compareSlot.placeholder.textContent = prev >= 0 ? "上一轮：无图" : "已是首轮 / First round";
+                    compareSlot.subtitle.textContent = "上一轮：—";
+                }
+            };
+            let savedNormalWidth = node.size[0] || 520;
+            const COMPARE_WIDTH = 820;
+            const setCompareMode = (on) => {
+                if (!IS_SINGLE || !compareSlot) return;
+                compareMode = !!on;
+                node.properties.pz_compare = compareMode ? true : undefined;
+                if (compareMode) {
+                    savedNormalWidth = node.size[0]; // 记住进入对照前的宽度
+                    if (compareSlot.box.parentNode !== boxesRow) boxesRow.insertBefore(compareSlot.box, slots[0].box);
+                    node.setSize([Math.max(node.size[0], COMPARE_WIDTH), node.size[1]]);
+                } else {
+                    if (compareSlot.box.parentNode === boxesRow) boxesRow.removeChild(compareSlot.box);
+                    node.setSize([savedNormalWidth || 520, node.size[1]]);
+                }
+                compareButton.textContent = compareMode ? "退出对照" : "对照上轮";
+                compareButton.classList.toggle("pz-di-active", compareMode);
+                refreshCompare();
+                autoFitHeight();
+            };
+            const compareButton = document.createElement("button");
+            compareButton.type = "button";
+            compareButton.className = "pz-di-compare-btn";
+            compareButton.textContent = compareMode ? "退出对照" : "对照";
+            compareButton.title = "并排显示上一轮，便于对照 / Toggle compare view";
+            compareButton.style.cssText = "font-size:12px;padding:2px 8px;border:1px solid #39414f;border-radius:6px;background:#23262e;color:#e6e9ef;cursor:pointer;";
+            compareButton.classList.toggle("pz-di-active", compareMode);
+            compareButton.addEventListener("click", () => setCompareMode(!compareMode));
+            restWrap.append(compareButton);
 
             const widgetFor = (slotNumber) => (slotNumber === 1 ? widget1 : widget2);
             const isLinked = (slotNumber) => Boolean(node.inputs?.find((item) => item.name === `input_image_${slotNumber}`)?.link);
@@ -350,6 +561,7 @@ app.registerExtension({
                 }
                 node.properties.pz_round_index = list.length - 1;
                 refreshRoundButtons();
+                refreshCompare(); // 回流/上传新增一轮后，同步刷新对照图（上一轮）
             };
             const applyRound = (index) => {
                 const list = roundsList();
@@ -367,6 +579,12 @@ app.registerExtension({
                     refreshFilePreview(slot);
                 }
                 refreshRoundButtons();
+                refreshCompare();
+                // 翻轮次时同步：被监听的加载图片节点也更新为当前轮图
+                if (IS_SINGLE) {
+                    const loaderId = currentLoadListenId();
+                    if (loaderId) writeBackToLoader(loaderId);
+                }
             };
             prevRoundButton.addEventListener("click", () => applyRound(roundIndex() - 1));
             nextRoundButton.addEventListener("click", () => applyRound(roundIndex() + 1));
@@ -391,6 +609,12 @@ app.registerExtension({
                 if (!item || item.type === MARKER_NODE_TYPE) return false;
                 if (!/save/i.test(item.type || "")) return false;
                 return (item.inputs || []).some((slot) => String(slot.type).toUpperCase() === "IMAGE");
+            };
+            // 图片加载节点：类型含 LoadImage（如 LoadImage / PZ_Load_Image 等），且有名为 image 的文件控件
+            const isImageLoadNode = (item) => {
+                if (!item || item.type === NODE_TYPE || item.type === SINGLE_NODE_TYPE || item.type === MARKER_NODE_TYPE) return false;
+                if (!/load\s*image/i.test(item.type || "")) return false;
+                return (item.widgets || []).some((w) => w.name === "image" && typeof w.value === "string" && w.value);
             };
             // 被“忽略 / Bypass”(mode=2) 和“禁用 / Mute”(mode=4) 的节点不会执行，不列入下拉
             const isActiveNode = (item) => {
@@ -425,6 +649,106 @@ app.registerExtension({
                 if (fallback) node.properties.pz_listen_node = fallback;
                 return fallback;
             };
+            // —— 加载图监听：选择工作流中的图片加载节点，同步其第一张图作为编辑源 ——
+            const loadListenOptions = () => {
+                return (app.graph?._nodes || [])
+                    .filter((item) => item && isActiveNode(item) && isImageLoadNode(item))
+                    .map((item) => ({ id: String(item.id), type: item.type, label: `图片加载 #${item.id}${item.title ? ` · ${item.title}` : ""}` }));
+            };
+            const currentLoadListenId = () => {
+                const options = loadListenOptions();
+                const saved = node.properties?.pz_load_listen;
+                if (saved && options.some((item) => item.id === String(saved))) return String(saved);
+                return "";
+            };
+            const refreshLoadListenSelect = () => {
+                if (!loadListenSelect) return;
+                const current = currentLoadListenId();
+                loadListenSelect.innerHTML = "";
+                const placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.textContent = "— 不监听 —";
+                loadListenSelect.appendChild(placeholder);
+                loadListenOptions().forEach((opt) => {
+                    const o = document.createElement("option");
+                    o.value = opt.id;
+                    o.textContent = opt.label;
+                    loadListenSelect.appendChild(o);
+                });
+                loadListenSelect.value = current;
+            };
+            // —— 提示词源监听：选择工作流中的提示词/字符串（多行）文本节点，同步其文本作为单图版提示词 ——
+            // 文本控件识别：ComfyUI 的 STRING 类型 widget.type 为 "STRING"（大写），字符串(多行)节点(如 PrimitiveNode)控件名常为 "value"
+            const isTextWidget = (w) => typeof w.value === "string" && (/string/i.test(w.type || "") || /text|prompt|positive|negative|caption|value|描述|提示/i.test(w.name || ""));
+            const isPromptTextNode = (item) => {
+                if (!item) return false;
+                const t = item.type;
+                if ([NODE_TYPE, SINGLE_NODE_TYPE, MARKER_NODE_TYPE].includes(t)) return false;
+                if (isImageLoadNode(item) || isSaveLikeNode(item)) return false;
+                return (item.widgets || []).some(isTextWidget);
+            };
+            const findPromptTextWidget = (item) => {
+                return (item.widgets || []).find(isTextWidget);
+            };
+            const promptListenOptions = () => {
+                return (app.graph?._nodes || [])
+                    .filter((item) => item && isActiveNode(item) && isPromptTextNode(item))
+                    .map((item) => ({ id: String(item.id), type: item.type, label: `提示词 ${item.type} #${item.id}${item.title ? ` · ${item.title}` : ""}` }));
+            };
+            const currentPromptListenId = () => {
+                const options = promptListenOptions();
+                const saved = node.properties?.pz_prompt_listen;
+                if (saved && options.some((item) => item.id === String(saved))) return String(saved);
+                return "";
+            };
+            const refreshPromptListenSelect = () => {
+                if (!promptListenSelect) return;
+                const current = currentPromptListenId();
+                promptListenSelect.innerHTML = "";
+                const placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.textContent = "— 不监听 —";
+                promptListenSelect.appendChild(placeholder);
+                promptListenOptions().forEach((opt) => {
+                    const o = document.createElement("option");
+                    o.value = opt.id;
+                    o.textContent = opt.label;
+                    promptListenSelect.appendChild(o);
+                });
+                promptListenSelect.value = current;
+            };
+            // 单图版：未选图时，自动同步“加载图监听”所指节点的第一张图；若未设监听则默认取第一个图片加载节点
+            const applyDefaultImageFromFirstLoader = () => {
+                if (!IS_SINGLE) return;
+                if (widget1?.value) return;
+                let loadId = currentLoadListenId();
+                if (!loadId) {
+                    const first = (app.graph?._nodes || []).find(isImageLoadNode);
+                    loadId = first ? String(first.id) : "";
+                    if (loadId) node.properties.pz_load_listen = loadId;
+                }
+                if (!loadId) return;
+                const loader = (app.graph?._nodes || []).find((n) => String(n.id) === loadId);
+                const img = loader?.widgets?.find((w) => w.name === "image")?.value;
+                if (img && (!fileListCache || fileListCache.includes(img))) {
+                    widget1.value = img;
+                    widget1.callback?.call(widget1, img);
+                    refreshFilePreview(slots[0]);
+                    refreshLoadListenSelect();
+                }
+            };
+            // 初次加载：未保存过监听选择时，默认选中工作流里第一个图片加载节点 / 第一个提示词文本节点
+            const applyDefaultListenSelection = () => {
+                if (!IS_SINGLE) return;
+                if (!Object.prototype.hasOwnProperty.call(node.properties || {}, "pz_load_listen")) {
+                    const first = loadListenOptions()[0];
+                    if (first) node.properties.pz_load_listen = first.id;
+                }
+                if (!Object.prototype.hasOwnProperty.call(node.properties || {}, "pz_prompt_listen")) {
+                    const first = promptListenOptions()[0];
+                    if (first) node.properties.pz_prompt_listen = first.id;
+                }
+            };
             const refreshListenSelect = () => {
                 const options = listenOptions();
                 const current = currentListenId();
@@ -451,6 +775,25 @@ app.registerExtension({
             listenSelect.addEventListener("change", () => {
                 node.properties.pz_listen_node = listenSelect.value;
             });
+            loadListenSelect.addEventListener("mousedown", refreshLoadListenSelect);
+            loadListenSelect.addEventListener("focus", refreshLoadListenSelect);
+            loadListenSelect.addEventListener("change", () => {
+                node.properties.pz_load_listen = loadListenSelect.value;
+                if (IS_SINGLE) {
+                    detachHijack();
+                    if (loadListenSelect.value) attachHijack(loadListenSelect.value);
+                    else applyDefaultImageFromFirstLoader();
+                }
+            });
+            promptListenSelect.addEventListener("mousedown", refreshPromptListenSelect);
+            promptListenSelect.addEventListener("focus", refreshPromptListenSelect);
+            promptListenSelect.addEventListener("change", () => {
+                node.properties.pz_prompt_listen = promptListenSelect.value;
+                if (IS_SINGLE) {
+                    detachPromptHijack();
+                    if (promptListenSelect.value) attachPromptHijack(promptListenSelect.value);
+                }
+            });
 
             const uploadFile = async (slot, file) => {
                 const body = new FormData();
@@ -469,6 +812,11 @@ app.registerExtension({
                 }
                 pushRound(name);
                 refreshFilePreview(slot);
+                // 反向劫持：单图版手动换图 → 写回被监听的加载图源节点
+                if (IS_SINGLE && slot.slotNumber === 1) {
+                    const lid = currentLoadListenId();
+                    if (lid) writeBackToLoader(lid);
+                }
             };
 
             slots.forEach((slot) => {
@@ -520,12 +868,22 @@ app.registerExtension({
                     }
                     pushRound(slot.fileSelect.value);
                     refreshFilePreview(slot);
+                    // 反向劫持：单图版选图 → 写回被监听的加载图源节点
+                    if (IS_SINGLE && slot.slotNumber === 1) {
+                        const lid = currentLoadListenId();
+                        if (lid) writeBackToLoader(lid);
+                    }
                 });
                 slot.textarea.addEventListener("input", () => {
                     const widget = slot.slotNumber === 1 ? prompt1Widget : prompt2Widget;
                     if (widget) {
                         widget.value = slot.textarea.value;
                         widget.callback?.call(widget, slot.textarea.value);
+                    }
+                    // 反向劫持：单图版改提示词 → 写回被监听的提示词源节点
+                    if (IS_SINGLE && slot.slotNumber === 1) {
+                        const pid = currentPromptListenId();
+                        if (pid) writeBackToPromptSource(pid, slot.textarea.value);
                     }
                 });
             });
@@ -654,8 +1012,41 @@ app.registerExtension({
             api.addEventListener("progress_state", onProgressState);
 
             let pendingResultImages = [];
+            let loadResultImages = [];
+            // 把监听节点产出的图片下载并导入到指定图槽（加载图监听 / 回流监听共用）
+            const importResultImage = (ref, slot) => {
+                if (!ref) return Promise.resolve();
+                const url = `/view?filename=${encodeURIComponent(ref.filename)}&subfolder=${encodeURIComponent(ref.subfolder || "")}&type=${encodeURIComponent(ref.type || "output")}&rand=${Math.random()}`;
+                return fetch(url)
+                    .then((response) => (response.ok ? response.blob() : null))
+                    .then((blob) => {
+                        if (!blob) return;
+                        return uploadFile(slot, new File([blob], ref.filename, { type: blob.type || "image/png" }));
+                    })
+                    .catch((error) => console.warn("[PZ Dual Image] Cannot import result image", error));
+            };
+            // 劫持模式：把当前轮结果图写回被监听的加载图源节点，让整张工作流的源图随编辑迭代
+            const writeBackToLoader = (loaderId) => {
+                const img = widget1.value;
+                if (!img) return;
+                const loader = (app.graph?._nodes || []).find((n) => String(n.id) === loaderId);
+                const w = loader?.widgets?.find((x) => x.name === "image");
+                if (!w || w.value === img) return;
+                w.value = img;
+                w.callback?.call(w, img); // 触发其回调（含劫持同步），刷新加载节点与单图版
+            };
+            // 劫持模式：把单图版当前提示词写回被监听的提示词源节点（反向更新）
+            const writeBackToPromptSource = (srcId, text) => {
+                if (!srcId || typeof text !== "string") return;
+                const src = (app.graph?._nodes || []).find((n) => String(n.id) === srcId);
+                const w = findPromptTextWidget(src);
+                if (!w || w.value === text) return;
+                w.value = text;
+                w.callback?.call(w, text); // 触发其回调，刷新源节点显示
+            };
             const onExecutionStart = () => {
                 pendingResultImages = [];
+                loadResultImages = [];
                 refreshListenSelect();
                 if (idleTimer) clearTimeout(idleTimer);
                 currentNodeId = "";
@@ -665,12 +1056,20 @@ app.registerExtension({
             const onExecuted = (event) => {
                 const images = event.detail?.output?.images;
                 if (Array.isArray(images)) {
-                    const listenId = currentListenId();
-                    if (listenId) {
-                        // 只导入“监听”下拉选中那个节点输出的图片
-                        if (String(event.detail?.node) === listenId) pendingResultImages = images.slice();
+                    if (IS_SINGLE) {
+                        // 单图版：加载图监听与回流监听独立收集
+                        const loadId = currentLoadListenId();
+                        if (loadId && String(event.detail?.node) === loadId) loadResultImages = images.slice();
+                        const resultId = currentListenId();
+                        if (resultId && String(event.detail?.node) === resultId) pendingResultImages = images.slice();
                     } else {
-                        pendingResultImages.push(...images);
+                        const listenId = currentListenId();
+                        if (listenId) {
+                            // 只导入“监听”下拉选中那个节点输出的图片
+                            if (String(event.detail?.node) === listenId) pendingResultImages = images.slice();
+                        } else {
+                            pendingResultImages.push(...images);
+                        }
                     }
                 }
                 if (String(event.detail?.node) !== String(node.id)) return;
@@ -680,22 +1079,31 @@ app.registerExtension({
                     setPlaceholder(slot, false);
                 });
             };
-            const onExecutionSuccess = () => {
-                const ref = pendingResultImages[pendingResultImages.length - 1];
-                pendingResultImages = [];
+            const onExecutionSuccess = async () => {
                 setProgress(1, "完成");
                 stopTimer();
                 if (idleTimer) clearTimeout(idleTimer);
                 idleTimer = setTimeout(setIdle, 1500);
-                if (!ref || isLinked(2)) return;
-                const url = `/view?filename=${encodeURIComponent(ref.filename)}&subfolder=${encodeURIComponent(ref.subfolder || "")}&type=${encodeURIComponent(ref.type || "output")}&rand=${Math.random()}`;
-                fetch(url)
-                    .then((response) => (response.ok ? response.blob() : null))
-                    .then((blob) => {
-                        if (!blob) return;
-                        return uploadFile(slots[1], new File([blob], ref.filename, { type: blob.type || "image/png" }));
-                    })
-                    .catch((error) => console.warn("[PZ Dual Image] Cannot import result image", error));
+                if (IS_SINGLE) {
+                    // 加载图监听：同步编辑源到图槽
+                    const loadRef = loadResultImages[loadResultImages.length - 1];
+                    loadResultImages = [];
+                    // 回流监听：结果图回显到图槽
+                    const resultRef = pendingResultImages[pendingResultImages.length - 1];
+                    pendingResultImages = [];
+                    if (loadRef) await importResultImage(loadRef, slots[0]);
+                    if (resultRef) await importResultImage(resultRef, slots[0]);
+                    // 劫持：当前轮结果图代替加载图源节点，作为下一轮源图
+                    const loaderId = currentLoadListenId();
+                    if (loaderId && (resultRef || loadRef)) writeBackToLoader(loaderId);
+                    return;
+                }
+                const resultSlot = slots[1];
+                const resultLinked = isLinked(2);
+                const ref = pendingResultImages[pendingResultImages.length - 1];
+                pendingResultImages = [];
+                if (!ref || resultLinked) return;
+                await importResultImage(ref, resultSlot);
             };
             api.addEventListener("execution_start", onExecutionStart);
             api.addEventListener("executed", onExecuted);
@@ -715,6 +1123,8 @@ app.registerExtension({
                 api.removeEventListener("execution_error", stopOnFailure);
                 api.removeEventListener("execution_interrupted", stopOnFailure);
                 stopTimer();
+                detachHijack();
+                detachPromptHijack();
                 if (idleTimer) clearTimeout(idleTimer);
                 return originalRemoved?.apply(this, arguments);
             };
@@ -729,6 +1139,10 @@ app.registerExtension({
             // 内容可能还没布局完（首次测量偏小），所以 8 秒内会持续重试，直到“内容放得下”或超时
             const autoFitHeight = () => {
                 if (autoFitDone) return syncHeight();
+                // 对照模式下确保节点宽度足够容纳两张并排的图（初始/加载时 setSize 可能未及时生效）
+                if (IS_SINGLE && compareMode && node.size[0] < COMPARE_WIDTH) {
+                    node.setSize([COMPARE_WIDTH, node.size[1]]);
+                }
                 const top = Number(layout.last_y);
                 if (!Number.isFinite(top) || top <= 0) return;
                 const previous = container.style.height;
@@ -776,6 +1190,17 @@ app.registerExtension({
                 refreshTarget();
                 refreshRoundButtons();
                 refreshListenSelect();
+                applyDefaultListenSelection();
+                refreshLoadListenSelect();
+                refreshPromptListenSelect();
+                if (IS_SINGLE) {
+                    const lid = currentLoadListenId();
+                    if (lid) attachHijack(lid);
+                    else applyDefaultImageFromFirstLoader();
+                    const pid = currentPromptListenId();
+                    if (pid) attachPromptHijack(pid);
+                }
+                if (IS_SINGLE && compareMode) setCompareMode(true);
                 syncHeight();
                 return configured;
             };
@@ -787,6 +1212,17 @@ app.registerExtension({
                 refreshTarget();
                 syncPromptTexts();
                 refreshListenSelect();
+                applyDefaultListenSelection();
+                refreshLoadListenSelect();
+                refreshPromptListenSelect();
+                if (IS_SINGLE) {
+                    const lid = currentLoadListenId();
+                    if (lid) attachHijack(lid);
+                    else applyDefaultImageFromFirstLoader();
+                    const pid = currentPromptListenId();
+                    if (pid) attachPromptHijack(pid);
+                }
+                if (IS_SINGLE) refreshCompare();
                 if (!roundsList().length) pushRound(widget1?.value || widget2?.value);
             });
 
@@ -795,6 +1231,18 @@ app.registerExtension({
                 syncPromptTexts();
                 refreshRoundButtons();
                 refreshListenSelect();
+                applyDefaultListenSelection();
+                refreshLoadListenSelect();
+                refreshPromptListenSelect();
+                if (IS_SINGLE) {
+                    const lid = currentLoadListenId();
+                    if (lid) attachHijack(lid);
+                    else applyDefaultImageFromFirstLoader();
+                    const pid = currentPromptListenId();
+                    if (pid) attachPromptHijack(pid);
+                }
+                if (IS_SINGLE && compareMode) setCompareMode(true); // 延迟兜底：节点挂载后确保对照布局与宽度已撑开
+                if (IS_SINGLE) refreshCompare();
                 autoFitHeight(); // 只在内容放不下时才把节点撑高，已够大就保持原尺寸
                 node.setDirtyCanvas?.(true, true);
             }, 100);
