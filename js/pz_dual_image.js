@@ -160,7 +160,7 @@ app.registerExtension({
 
             const noteRow = document.createElement("div");
             noteRow.className = "pz-di-note";
-            noteRow.textContent = " PS:结果图会在完成图片生成后自动显示在图2区域。";
+            noteRow.textContent = " PS:结果图在生成完成后自动回流到图2区域，可直接继续编辑。";
 
             container.append(uploadRow, boxesRow, roundRow, progressRow, noteRow);
 
