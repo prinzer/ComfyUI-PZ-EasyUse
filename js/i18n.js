@@ -296,13 +296,13 @@ if (typeof window !== 'undefined' && window.localStorage) {
     });
     
     // Also check for language changes every few seconds as a fallback
-    setInterval(() => {
-        const currentLang = detectComfyUILanguage();
-        if (currentLang !== getCurrentLanguage()) {
-            console.log(`PZ EasyUse i18n: Detected language change: ${currentLang}`);
-            setLanguage(currentLang);
-        }
-    }, 5000); // Check every 5 seconds
+    // setInterval(() => {
+    //     const currentLang = detectComfyUILanguage();
+    //     if (currentLang !== getCurrentLanguage()) {
+    //         console.log(`PZ EasyUse i18n: Detected language change: ${currentLang}`);
+    //         setLanguage(currentLang);
+    //     }
+    // }, 5000); // Check every 5 seconds
 }
 
 // Get current language

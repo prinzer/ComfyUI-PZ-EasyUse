@@ -71,18 +71,20 @@ app.registerExtension({
             const widget1 = node.widgets?.find((w) => w.name === "image_1");
             const widget2 = node.widgets?.find((w) => w.name === "image_2");
             const selectWidget = node.widgets?.find((w) => w.name === "output_select");
-            const prompt1Widget = node.widgets?.find((w) => w.name === "prompt_1");
-            const prompt2Widget = node.widgets?.find((w) => w.name === "prompt_2");
+            const promptWidget = node.widgets?.find((w) => w.name === "prompt" || w.name === "prompt_1");
             const editTargetWidget = node.widgets?.find((w) => w.name === "edit_target");
             const listenSourceWidget = node.widgets?.find((w) => w.name === "listen_source");
+            const disableWidget = node.widgets?.find((w) => w.name === "disable_image_2");
+            const isImage2Disabled = () => Boolean(disableWidget?.value);
 
             const container = document.createElement("div");
             container.style.cssText = "display:flex;flex-direction:column;gap:6px;width:calc(100% - 12px);height:100%;margin:0 6px;padding:4px 0;box-sizing:border-box;overflow:hidden;";
 
             const style = document.createElement("style");
-            style.textContent = `.pz-di-box { display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;gap:5px;padding:6px;border:1px solid var(--border-color);border-radius:6px;box-sizing:border-box; } .pz-di-box.pz-di-active { border-color:#e8a33d; } .pz-di-box.pz-di-editing { box-shadow:inset 0 0 0 1px #e8a33d; } .pz-di-box.pz-di-dragover { border-color:#6ea8fe;box-shadow:0 0 0 2px rgba(110,168,254,.45); } .pz-di-header { display:flex;align-items:center;justify-content:space-between;gap:4px;font-size:11px;font-weight:600;color:var(--fg-color); } .pz-di-badge { font-size:10px;font-weight:normal;color:var(--desc-text);padding:1px 6px;border:1px solid var(--border-color);border-radius:8px;white-space:nowrap; } .pz-di-badge.pz-di-linked { color:#35a66f;border-color:#35a66f; } .pz-di-wrap { position:relative;flex:1;min-height:0;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);overflow:hidden;cursor:pointer; } .pz-di-preview { width:100%;height:100%;object-fit:contain;display:block; } .pz-di-placeholder { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--desc-text);pointer-events:none;text-align:center;padding:4px;box-sizing:border-box; } .pz-di-select { width:100%;padding:5px 6px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;box-sizing:border-box;cursor:pointer; } .pz-di-text { width:100%;flex:0 0 64px;min-height:0;box-sizing:border-box;resize:none;padding:5px 6px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.35; } .pz-di-targetrow { display:flex;align-items:center;gap:5px;flex:0 0 auto; } .pz-di-targetrow > span { font-size:11px;font-weight:600;color:var(--fg-color);margin-right:2px;white-space:nowrap; } .pz-di-target { flex:0 0 auto;padding:4px 8px;border:1px solid var(--border-color);border-radius:6px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.2;cursor:pointer;white-space:nowrap; } .pz-di-target.pz-di-target-on { border-color:#e8a33d;color:#e8a33d; } .pz-di-uploadrow { display:flex;align-items:center;gap:8px;flex:0 0 auto; } .pz-di-upload { flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border-color);border-radius:6px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.2;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; } .pz-di-upload:hover:not(:disabled) { border-color:#6ea8fe; } .pz-di-upload:disabled { opacity:.45;cursor:default; } .pz-di-boxesrow { display:flex;gap:8px;flex:1;min-height:0; } .pz-di-roundrow { display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto;padding-top:2px; } .pz-di-roundgroup { display:flex;align-items:center;gap:5px;flex:0 0 auto; } .pz-di-listenrow { display:flex;align-items:center;gap:4px;flex:1;min-width:0; } .pz-di-listenlabel { font-size:10px;color:var(--desc-text);white-space:nowrap; } .pz-di-listen { flex:1;min-width:0;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:10px;line-height:1.2;box-sizing:border-box;cursor:pointer; } .pz-di-listen:disabled { opacity:.6;cursor:default; } .pz-di-sub { flex:0 0 auto;font-size:10px;color:var(--desc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%; } .pz-di-note { flex:0 0 auto;font-size:10px;line-height:1.35;color:var(--desc-text);padding-top:1px;overflow:hidden; } .pz-di-progressrow { display:flex;align-items:center;gap:6px;flex:0 0 auto;padding-top:2px; } .pz-di-progress { flex:1;min-width:0;height:7px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);overflow:hidden;box-sizing:border-box; } .pz-di-progressfill { width:0%;height:100%;background:#6ea8fe;transition:width .12s linear; } .pz-di-progresstext { flex:0 1 auto;max-width:52%;min-width:32px;text-align:right;font-size:10px;color:var(--desc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; } .pz-di-timer { flex:0 0 auto;font-size:10px;color:var(--desc-text);white-space:nowrap; } .pz-di-round { padding:4px 9px;border:1px solid var(--border-color);border-radius:6px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.2;cursor:pointer;white-space:nowrap; } .pz-di-round:hover:not(:disabled) { border-color:#6ea8fe; } .pz-di-round:disabled { opacity:.45;cursor:default; } .pz-di-roundlabel { font-size:10px;color:var(--desc-text);white-space:nowrap; } .pz-di-run { padding:4px 12px;border:1px solid #35a66f;border-radius:6px;background:#35a66f;color:#fff;font:inherit;font-size:11px;font-weight:600;line-height:1.2;cursor:pointer;white-space:nowrap; } .pz-di-run:hover { filter:brightness(1.08); } .pz-di-run:active { filter:brightness(.92); }`;
+            style.textContent = `.pz-di-box { display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;gap:5px;padding:6px;border:1px solid var(--border-color);border-radius:6px;box-sizing:border-box;overflow:hidden; } .pz-di-box.pz-di-active { border-color:#e8a33d; } .pz-di-box.pz-di-editing { box-shadow:inset 0 0 0 1px #e8a33d; } .pz-di-box.pz-di-dragover { border-color:#6ea8fe;box-shadow:0 0 0 2px rgba(110,168,254,.45); } .pz-di-header { display:flex;align-items:center;justify-content:space-between;gap:4px;font-size:11px;font-weight:600;color:var(--fg-color); } .pz-di-badge { font-size:10px;font-weight:normal;color:var(--desc-text);padding:1px 6px;border:1px solid var(--border-color);border-radius:8px;white-space:nowrap; } .pz-di-badge.pz-di-linked { color:#35a66f;border-color:#35a66f; } .pz-di-wrap { position:relative;flex:1;min-height:90px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);overflow:hidden;cursor:pointer; } .pz-di-preview { width:100%;height:100%;object-fit:contain;display:block; } .pz-di-placeholder { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--desc-text);pointer-events:none;text-align:center;padding:4px;box-sizing:border-box; } .pz-di-select { width:100%;padding:5px 6px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;box-sizing:border-box;cursor:pointer; } .pz-di-text { width:100%;flex:0 0 64px;min-height:0;box-sizing:border-box;resize:none;padding:5px 6px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.35; } .pz-di-targetrow { display:flex;align-items:center;gap:5px;flex:0 0 auto; } .pz-di-targetrow > span { font-size:11px;font-weight:600;color:var(--fg-color);margin-right:2px;white-space:nowrap; } .pz-di-target { flex:0 0 auto;padding:4px 8px;border:1px solid var(--border-color);border-radius:6px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.2;cursor:pointer;white-space:nowrap; } .pz-di-target.pz-di-target-on { border-color:#e8a33d;color:#e8a33d; } .pz-di-uploadrow { display:flex;align-items:center;gap:8px;flex:0 0 auto; } .pz-di-upload { flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border-color);border-radius:6px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.2;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; } .pz-di-upload:hover:not(:disabled) { border-color:#6ea8fe; } .pz-di-upload:disabled { opacity:.45;cursor:default; } .pz-di-boxesrow { display:flex;gap:8px;flex:1;min-height:0;overflow:hidden; } .pz-di-roundrow { display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto;padding-top:2px; } .pz-di-roundgroup { display:flex;align-items:center;gap:5px;flex:0 0 auto; } .pz-di-listenrow { display:flex;align-items:center;gap:4px;flex:1;min-width:0; } .pz-di-listenlabel { font-size:10px;color:var(--desc-text);white-space:nowrap; } .pz-di-listen { flex:1;min-width:0;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:10px;line-height:1.2;box-sizing:border-box;cursor:pointer; } .pz-di-listen:disabled { opacity:.6;cursor:default; } .pz-di-sub { flex:0 0 auto;font-size:10px;color:var(--desc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%; } .pz-di-note { flex:0 0 auto;font-size:10px;line-height:1.35;color:var(--desc-text);padding-top:1px;overflow:hidden; } .pz-di-progressrow { display:flex;align-items:center;gap:6px;flex:0 0 auto;padding-top:2px; } .pz-di-progress { flex:1;min-width:0;height:7px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);overflow:hidden;box-sizing:border-box; } .pz-di-progressfill { width:0%;height:100%;background:#6ea8fe;transition:width .12s linear; } .pz-di-progresstext { flex:0 1 auto;max-width:52%;min-width:32px;text-align:right;font-size:10px;color:var(--desc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; } .pz-di-timer { flex:0 0 auto;font-size:10px;color:var(--desc-text);white-space:nowrap; } .pz-di-round { padding:4px 9px;border:1px solid var(--border-color);border-radius:6px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:11px;line-height:1.2;cursor:pointer;white-space:nowrap; } .pz-di-round:hover:not(:disabled) { border-color:#6ea8fe; } .pz-di-round:disabled { opacity:.45;cursor:default; } .pz-di-roundlabel { font-size:10px;color:var(--desc-text);white-space:nowrap; } .pz-di-run { padding:4px 12px;border:1px solid #35a66f;border-radius:6px;background:#35a66f;color:#fff;font:inherit;font-size:11px;font-weight:600;line-height:1.2;cursor:pointer;white-space:nowrap; } .pz-di-run:hover { filter:brightness(1.08); } .pz-di-run:active { filter:brightness(.92); }`;
             container.appendChild(style);
             style.textContent += " .pz-di-compare-btn.pz-di-active{border-color:#e8a33d;color:#e8a33d;}";
+            style.textContent += " .pz-di-box.pz-di-disabled{opacity:.4;filter:grayscale(.7);} .pz-di-box.pz-di-disabled .pz-di-wrap{pointer-events:none;cursor:not-allowed;} .pz-di-toggle{padding:1px 7px;border:1px solid var(--border-color);border-radius:8px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:10px;line-height:1.2;cursor:pointer;white-space:nowrap;} .pz-di-toggle.pz-di-on{border-color:#e8a33d;color:#e8a33d;}";
 
             // 顶部：两个“选择上传图片”按钮
             const uploadRow = document.createElement("div");
@@ -112,13 +114,13 @@ app.registerExtension({
             // 底部一行：左侧“监听节点”下拉，右侧“上一轮 / 下一轮 / 运行”
             const roundRow = document.createElement("div");
             roundRow.className = "pz-di-roundrow";
-            roundRow.style.cssText = "display:flex;align-items:center;gap:6px;";
+            roundRow.style.cssText = "display:flex;align-items:center;gap:6px;min-width:0;";
 
             const listenWrap = document.createElement("div");
-            listenWrap.style.cssText = "display:flex;align-items:center;gap:6px;";
+            listenWrap.style.cssText = "display:flex;align-items:center;gap:6px;min-width:0;";
             const listenTitle = document.createElement("span");
-            listenTitle.textContent = "结果图源：";
-            listenTitle.style.cssText = "font-size:12px;color:#cfd6e4;white-space:nowrap;";
+            listenTitle.textContent = "结果图绑定：";
+            listenTitle.style.cssText = "font-size:12px;color:#cfd6e4;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis;";
             const listenSelect = document.createElement("select");
             listenSelect.className = "pz-di-listen-select single";
             listenSelect.style.cssText = "flex:1;min-width:0;font-size:12px;background:#23262e;color:#e6e9ef;border:1px solid #39414f;border-radius:6px;padding:2px 4px;";
@@ -150,21 +152,32 @@ app.registerExtension({
 
             // 单图版：加载图监听下拉（选择工作流中的图片加载节点，自动同步其第一张图作为编辑源）
             const loadListenWrap = document.createElement("div");
-            loadListenWrap.style.cssText = "display:flex;align-items:center;gap:6px;";
+            loadListenWrap.style.cssText = "display:flex;align-items:center;gap:6px;min-width:0;";
             const loadListenLabel = document.createElement("span");
-            loadListenLabel.textContent = "加载图源：";
-            loadListenLabel.style.cssText = "font-size:12px;color:#cfd6e4;white-space:nowrap;";
+            loadListenLabel.textContent = "图1 加载图绑定：";
+            loadListenLabel.style.cssText = "font-size:12px;color:#cfd6e4;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis;";
             const loadListenSelect = document.createElement("select");
             loadListenSelect.className = "pz-di-listen-select single";
             loadListenSelect.style.cssText = "flex:1;min-width:0;font-size:12px;background:#23262e;color:#e6e9ef;border:1px solid #39414f;border-radius:6px;padding:2px 4px;";
             loadListenWrap.append(loadListenLabel, loadListenSelect);
 
+            // 双图版：第二张图的「加载图绑定」下拉（额外多绑一张图）
+            const loadListenWrap2 = document.createElement("div");
+            loadListenWrap2.style.cssText = "display:flex;align-items:center;gap:6px;min-width:0;";
+            const loadListenLabel2 = document.createElement("span");
+            loadListenLabel2.textContent = "图2 加载图绑定：";
+            loadListenLabel2.style.cssText = "font-size:12px;color:#cfd6e4;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis;";
+            const loadListenSelect2 = document.createElement("select");
+            loadListenSelect2.className = "pz-di-listen-select single";
+            loadListenSelect2.style.cssText = "flex:1;min-width:0;font-size:12px;background:#23262e;color:#e6e9ef;border:1px solid #39414f;border-radius:6px;padding:2px 4px;";
+            loadListenWrap2.append(loadListenLabel2, loadListenSelect2);
+
             // 单图版：提示词源监听下拉（选择工作流中的提示词文本节点，同步其文本作为编辑提示词）
             const promptListenWrap = document.createElement("div");
-            promptListenWrap.style.cssText = "display:flex;align-items:center;gap:6px;";
+            promptListenWrap.style.cssText = "display:flex;align-items:center;gap:6px;min-width:0;";
             const promptListenLabel = document.createElement("span");
-            promptListenLabel.textContent = "提示词源：";
-            promptListenLabel.style.cssText = "font-size:12px;color:#cfd6e4;white-space:nowrap;";
+            promptListenLabel.textContent = "提示词绑定：";
+            promptListenLabel.style.cssText = "font-size:12px;color:#cfd6e4;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis;";
             const promptListenSelect = document.createElement("select");
             promptListenSelect.className = "pz-di-listen-select single";
             promptListenSelect.style.cssText = "flex:1;min-width:0;font-size:12px;background:#23262e;color:#e6e9ef;border:1px solid #39414f;border-radius:6px;padding:2px 4px;";
@@ -173,27 +186,34 @@ app.registerExtension({
             roundRow.append(...(IS_SINGLE ? [restWrap] : [listenWrap, restWrap]));
 
             // —— 单图版“劫持”加载图片节点：监听即夺取其图作为编辑源，随加载节点 image 变化实时跟随 ——
-            let hijackedWidget = null;
-            let hijackSync = null;
-            const detachHijack = () => {
-                if (hijackedWidget && hijackSync && hijackedWidget.__pzHijackers) {
-                    hijackedWidget.__pzHijackers.delete(hijackSync);
+            const hijacked = {};
+            const detachHijack = (slotNumber) => {
+                if (slotNumber === undefined) {
+                    Object.values(hijacked).forEach((h) => {
+                        if (h?.widget?.__pzHijackers) h.widget.__pzHijackers.delete(h.sync);
+                    });
+                    for (const k in hijacked) delete hijacked[k];
+                    return;
                 }
-                hijackedWidget = null;
-                hijackSync = null;
+                const h = hijacked[slotNumber];
+                if (h && h.widget.__pzHijackers) h.widget.__pzHijackers.delete(h.sync);
+                delete hijacked[slotNumber];
             };
-            const attachHijack = (loadId) => {
-                if (!IS_SINGLE || !loadId) return;
-                detachHijack();
+            // —— 劫持图片加载节点：监听即夺取其图作为对应图槽（slotNumber）的编辑源，随加载节点 image 变化实时跟随 ——
+            const attachHijack = (loadId, slotNumber = 1) => {
+                if (!loadId) return;
+                detachHijack(slotNumber);
                 const loader = (app.graph?._nodes || []).find((n) => String(n.id) === loadId);
                 const w = loader?.widgets?.find((x) => x.name === "image");
                 if (!w) return;
+                const targetWidget = widgetFor(slotNumber);
+                const targetSlot = slots[slotNumber - 1];
                 const syncFn = () => {
                     const img = w.value;
-                    if (img) {
-                        widget1.value = img;
-                        widget1.callback?.call(widget1, img);
-                        refreshFilePreview(slots[0]);
+                    if (img && targetWidget) {
+                        targetWidget.value = img;
+                        targetWidget.callback?.call(targetWidget, img);
+                        refreshFilePreview(targetSlot);
                     }
                 };
                 w.__pzHijackers = w.__pzHijackers || new Set();
@@ -207,8 +227,7 @@ app.registerExtension({
                     };
                     w.__pzHijackWrapped = true;
                 }
-                hijackedWidget = w;
-                hijackSync = syncFn;
+                hijacked[slotNumber] = { widget: w, sync: syncFn };
                 syncFn(); // 立即同步一次（不连线、不执行即可用）
             };
 
@@ -223,12 +242,12 @@ app.registerExtension({
                 hijackPromptSync = null;
             };
             const attachPromptHijack = (promptId) => {
-                if (!IS_SINGLE || !promptId) return;
+                if (!promptId) return;
                 detachPromptHijack();
                 const src = (app.graph?._nodes || []).find((n) => String(n.id) === promptId);
                 const w = findPromptTextWidget(src);
                 if (!w) return;
-                const pw = prompt1Widget;
+                const pw = promptWidget;
                 const syncFn = () => {
                     const txt = w.value;
                     if (typeof txt !== "string") return;
@@ -274,7 +293,7 @@ app.registerExtension({
 
             const noteRow = document.createElement("div");
             noteRow.className = "pz-di-note";
-            noteRow.textContent = IS_SINGLE ? " PS:单图模式：运行后结果图会自动回显到上方预览区，可继续下一轮编辑。" : " PS:结果图在生成完成后自动回流到图2区域，可直接继续编辑。";
+            noteRow.textContent = IS_SINGLE ? " PS:单图模式：运行后结果图会自动回显到上方预览区，可继续下一轮编辑。" : " PS:结果图在生成完成后自动回流到图1，图2 作为固定参考图不回传，可继续下一轮编辑。";
 
             container.append(uploadRow, boxesRow, roundRow, progressRow, noteRow);
 
@@ -285,16 +304,16 @@ app.registerExtension({
             const hiddenWidgets = [
                 widget1,
                 widget2,
-                prompt1Widget,
-                prompt2Widget,
-                editTargetWidget,
+                promptWidget,
                 listenSourceWidget, // 改用节点内的“监听”下拉
+                disableWidget, // 改用节点内的“忽略图2”开关
                 node.widgets?.find((w) => w.name === "upload"),
             ];
             const applyHiddenWidgets = () => hiddenWidgets.forEach(hideWidget);
             applyHiddenWidgets();
             setTimeout(applyHiddenWidgets, 0);
 
+            let slot2Toggle = null;
             const slots = slotNumbers.map((slotNumber) => {
                 const box = document.createElement("div");
                 box.className = "pz-di-box";
@@ -306,6 +325,15 @@ app.registerExtension({
                 badge.className = "pz-di-badge";
                 badge.textContent = "文件 / File";
                 header.append(label, badge);
+                if (slotNumber === 2) {
+                    const toggle = document.createElement("button");
+                    toggle.type = "button";
+                    toggle.className = "pz-di-toggle";
+                    toggle.title = "开启后忽略图2：预览变灰、停止与绑定节点的双向同步，仅 image_1+提示词 参与工作流（保留绑定选择）";
+                    toggle.textContent = "忽略图2";
+                    header.append(toggle);
+                    slot2Toggle = toggle;
+                }
                 // 标题下方显示“当前编辑图：xxx.png”
                 const subtitle = document.createElement("div");
                 subtitle.className = "pz-di-sub";
@@ -329,19 +357,42 @@ app.registerExtension({
                 const textarea = document.createElement("textarea");
                 textarea.className = "pz-di-text";
                 textarea.placeholder = `编辑指令 ${slotNumber} / Edit prompt ${slotNumber}`;
-                textarea.value = (slotNumber === 1 ? prompt1Widget : prompt2Widget)?.value || "";
-                const children = IS_SINGLE ? [header, subtitle, wrap, fileSelect] : [header, subtitle, wrap, fileSelect, textarea];
-                if (!IS_SINGLE) children.push(targetButtons[slotNumber - 1]);
+                textarea.value = promptWidget?.value || "";
+                const children = [header, subtitle, wrap, fileSelect];
                 children.push(fileInput);
                 box.append(...children);
                 boxesRow.appendChild(box);
                 return { slotNumber, box, badge, wrap, preview, placeholder, fileSelect, fileInput, textarea, subtitle };
             });
-            // 单图版：左侧“上一轮图”下方放三个加载源选择行；右侧“当前图”下方放提示词区，二者等高对齐
+            // 双图版：图1、图2 共用同一份编辑指令（合并两个提示词框）
+            if (!IS_SINGLE) {
+                const sharedTA = slots[0].textarea;
+                slots[1].textarea = sharedTA;
+                sharedTA.addEventListener("input", () => {
+                    if (promptWidget) {
+                        promptWidget.value = sharedTA.value;
+                        promptWidget.callback?.call(promptWidget, sharedTA.value);
+                    }
+                });
+            }
+            // 源选择行：列出「加载图绑定 / 图2 加载图绑定 / 提示词绑定 / 结果图绑定」四个下拉，单图版额外并排提示词区
+            const listenPanel = document.createElement("div");
+            listenPanel.style.cssText = "display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;";
             if (IS_SINGLE) {
-                const listenPanel = document.createElement("div");
-                listenPanel.style.cssText = "display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;";
                 listenPanel.append(loadListenWrap, promptListenWrap, listenWrap);
+            } else {
+                // 双图版：四条绑定（加载图 / 图2加载 / 提示词 / 结果图）排成 2 行 × 2 列
+                const bindGrid = document.createElement("div");
+                bindGrid.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:4px;width:100%;min-width:0;box-sizing:border-box;";
+                bindGrid.append(loadListenWrap, loadListenWrap2, promptListenWrap, listenWrap);
+                listenPanel.append(bindGrid);
+            }
+            const sourceRow = document.createElement("div");
+            sourceRow.className = "pz-di-sourcerow";
+            sourceRow.style.cssText = IS_SINGLE
+                ? "display:flex;gap:8px;align-items:stretch;flex:0 0 auto;margin-top:4px;"
+                : "display:flex;gap:8px;align-items:stretch;flex:0 0 auto;margin-top:4px;";
+            if (IS_SINGLE) {
                 const promptPanel = document.createElement("div");
                 promptPanel.style.cssText = "flex:1;min-width:0;display:flex;";
                 const ta = slots[0].textarea;
@@ -349,11 +400,97 @@ app.registerExtension({
                 ta.style.minHeight = "0";
                 ta.style.height = "100%";
                 promptPanel.append(ta);
-                const sourceRow = document.createElement("div");
-                sourceRow.className = "pz-di-sourcerow";
-                sourceRow.style.cssText = "display:flex;gap:8px;align-items:stretch;flex:0 0 auto;margin-top:4px;";
                 sourceRow.append(listenPanel, promptPanel);
-                container.insertBefore(sourceRow, roundRow);
+            } else {
+                const taWrap = document.createElement("div");
+                taWrap.style.cssText = "flex:1 1 auto;min-height:44px;display:flex;margin-top:4px;";
+                const ta = slots[0].textarea;
+                ta.style.cssText = "width:100%;flex:1;min-height:40px;resize:none;font-size:12px;background:#23262e;color:#e6e9ef;border:1px solid #39414f;border-radius:6px;padding:4px;";
+                ta.placeholder = "编辑指令（图1/图2 共用）/ Edit prompt (shared)";
+                taWrap.append(ta);
+                listenPanel.append(taWrap);
+                sourceRow.append(listenPanel);
+            }
+            container.insertBefore(sourceRow, roundRow);
+
+            // —— 加载节点的“忽略”状态读写：mode 非 0（忽略 / Bypass 或 禁用 / Mute）即视为已忽略 ——
+            const findNodeById = (id) => (app.graph?._nodes || []).find((n) => String(n.id) === String(id)) || null;
+            const isLoaderNodeIgnored = (item) => {
+                const mode = Number(item?.mode);
+                return Number.isFinite(mode) && mode !== 0;
+            };
+            // 兼容 rgthree 等“节点开关”控制器：这类节点会给每个受控节点生成名为 “Enable <标题>” 的开关 widget。
+            // 直接改 mode 会被控制器的同步逻辑改回去（表现为“假象忽略”），因此优先翻转控制器自身的开关，
+            // 让控制器自己设置 mode，从而两边状态一致、不会被覆盖
+            const toggleViaModeChanger = (loader, ignored) => {
+                const wantEnabled = !ignored;
+                let handled = false;
+                for (const n of app.graph?._nodes || []) {
+                    for (const w of n.widgets || []) {
+                        if (typeof w?.doModeChange !== "function") continue;
+                        if (w.name !== `Enable ${loader.title}`) continue;
+                        if (Boolean(w.value) !== wantEnabled) w.doModeChange(wantEnabled);
+                        handled = true;
+                    }
+                }
+                return handled;
+            };
+            const setLoaderIgnored = (loader, ignored) => {
+                if (!loader) return;
+                if (isLoaderNodeIgnored(loader) === ignored) return;
+                if (toggleViaModeChanger(loader, ignored)) {
+                    // 控制器已自行写入 mode 并同步其 UI
+                } else if (ignored) {
+                    loader.__pzPrevMode = Number.isFinite(Number(loader.mode)) ? Number(loader.mode) : 0;
+                    loader.mode = 4; // 忽略（Bypass，与 rgthree 的“真忽略”外观一致）
+                } else {
+                    loader.mode = Number.isFinite(Number(loader.__pzPrevMode)) ? Number(loader.__pzPrevMode) : 0;
+                }
+                loader.setDirtyCanvas?.(true, true);
+                app.graph?.setDirtyCanvas?.(true, true);
+                console.log(`[PZ-EasyUse] 忽略同步：加载节点 #${loader.id} → mode=${loader.mode}（目标 ignored=${ignored}）`);
+            };
+
+            // 图2“忽略”开关：开启后图2 预览变灰、停止与绑定节点的双向同步（保留绑定选择），
+            // 并反向让绑定的图片加载节点一同忽略；后端只让 image_1 + 提示词 参与工作流（输出端口保持不变）
+            let ignoreSyncGuard = false;
+            let ignoreReady = false; // 首次按本节点/绑定对齐完成前，不做正向轮询，避免误把用户的忽略设置改回
+            const applyImage2Disabled = (fromLoader = false) => {
+                const off = isImage2Disabled();
+                if (slots[1]?.box) slots[1].box.classList.toggle("pz-di-disabled", off);
+                if (uploadButtons?.[1]) uploadButtons[1].disabled = off || isLinked(2);
+                if (slot2Toggle) {
+                    slot2Toggle.classList.toggle("pz-di-on", !off);
+                    slot2Toggle.textContent = off ? "图2 已忽略" : "忽略图2";
+                }
+                if (off) {
+                    detachHijack(2); // 忽略：本节点不再跟随/写回图2 绑定节点
+                } else {
+                    const lid2 = currentLoadListenId2();
+                    if (lid2) attachHijack(lid2, 2);
+                }
+                // 反向同步：本节点开关 → 让被绑定的图片加载节点一同忽略 / 恢复
+                if (!fromLoader && !ignoreSyncGuard) {
+                    const lid2 = currentLoadListenId2();
+                    const loader = lid2 ? findNodeById(lid2) : null;
+                    if (loader && isLoaderNodeIgnored(loader) !== off) {
+                        ignoreSyncGuard = true;
+                        try {
+                            setLoaderIgnored(loader, off);
+                        } finally {
+                            ignoreSyncGuard = false;
+                        }
+                    }
+                }
+            };
+            if (slot2Toggle) {
+                slot2Toggle.addEventListener("click", () => {
+                    if (disableWidget) {
+                        disableWidget.value = !disableWidget.value;
+                        disableWidget.callback?.call(disableWidget, disableWidget.value);
+                    }
+                    applyImage2Disabled();
+                });
             }
 
             // ===== 单图版对照模式：左侧并排显示“上一轮”，翻轮次时两图同步 =====
@@ -361,32 +498,31 @@ app.registerExtension({
             // 若用户曾手动“退出对照”并把 pz_compare 存为 false，则尊重该选择
             let compareMode = node.properties.pz_compare === undefined ? true : !!node.properties.pz_compare;
             let compareSlot = null;
-            if (IS_SINGLE) {
-                const cbox = document.createElement("div");
-                cbox.className = "pz-di-box pz-di-compare";
-                const cheader = document.createElement("div");
-                cheader.className = "pz-di-header";
-                const clabel = document.createElement("span");
-                clabel.textContent = "上一轮 / Prev";
-                const csub = document.createElement("div");
-                csub.className = "pz-di-sub";
-                csub.textContent = "上一轮：—";
-                const cwrap = document.createElement("div");
-                cwrap.className = "pz-di-wrap";
-                cwrap.style.cursor = "default";
-                const cpreview = document.createElement("img");
-                cpreview.className = "pz-di-preview";
-                cpreview.alt = "";
-                const cph = document.createElement("div");
-                cph.className = "pz-di-placeholder";
-                cph.textContent = "已是首轮 / First round";
-                cwrap.append(cpreview, cph);
-                cheader.append(clabel);
-                cbox.append(cheader, csub, cwrap);
-                compareSlot = { box: cbox, header: cheader, label: clabel, subtitle: csub, wrap: cwrap, preview: cpreview, placeholder: cph };
-            }
+            // 对照模式：左侧「上一轮」列（单图版与双图版共用；双图版在图1 左边插入）
+            const cbox = document.createElement("div");
+            cbox.className = "pz-di-box pz-di-compare";
+            const cheader = document.createElement("div");
+            cheader.className = "pz-di-header";
+            const clabel = document.createElement("span");
+            clabel.textContent = "上一轮 / Prev";
+            const csub = document.createElement("div");
+            csub.className = "pz-di-sub";
+            csub.textContent = "上一轮：—";
+            const cwrap = document.createElement("div");
+            cwrap.className = "pz-di-wrap";
+            cwrap.style.cursor = "default";
+            const cpreview = document.createElement("img");
+            cpreview.className = "pz-di-preview";
+            cpreview.alt = "";
+            const cph = document.createElement("div");
+            cph.className = "pz-di-placeholder";
+            cph.textContent = "已是首轮 / First round";
+            cwrap.append(cpreview, cph);
+            cheader.append(clabel);
+            cbox.append(cheader, csub, cwrap);
+            compareSlot = { box: cbox, header: cheader, label: clabel, subtitle: csub, wrap: cwrap, preview: cpreview, placeholder: cph };
             const refreshCompare = () => {
-                if (!IS_SINGLE || !compareMode || !compareSlot) return;
+                if (!compareMode || !compareSlot) return;
                 const list = roundsList();
                 const idx = roundIndex();
                 const prev = idx - 1;
@@ -406,14 +542,16 @@ app.registerExtension({
             };
             let savedNormalWidth = node.size[0] || 520;
             const COMPARE_WIDTH = 820;
+            const COMPARE_WIDTH_DUAL = 1180;
             const setCompareMode = (on) => {
-                if (!IS_SINGLE || !compareSlot) return;
+                if (!compareSlot) return;
                 compareMode = !!on;
                 node.properties.pz_compare = compareMode ? true : undefined;
                 if (compareMode) {
                     savedNormalWidth = node.size[0]; // 记住进入对照前的宽度
                     if (compareSlot.box.parentNode !== boxesRow) boxesRow.insertBefore(compareSlot.box, slots[0].box);
-                    node.setSize([Math.max(node.size[0], COMPARE_WIDTH), node.size[1]]);
+                    const targetW = IS_SINGLE ? COMPARE_WIDTH : COMPARE_WIDTH_DUAL;
+                    node.setSize([Math.max(node.size[0], targetW), node.size[1]]);
                 } else {
                     if (compareSlot.box.parentNode === boxesRow) boxesRow.removeChild(compareSlot.box);
                     node.setSize([savedNormalWidth || 520, node.size[1]]);
@@ -450,9 +588,8 @@ app.registerExtension({
 
             // 工作流加载后把控件值同步回自定义输入框（刷新后文本“丢失/不可见”的修复）
             const syncPromptTexts = () => {
+                const value = promptWidget?.value ?? "";
                 slots.forEach((slot) => {
-                    const widget = slot.slotNumber === 1 ? prompt1Widget : prompt2Widget;
-                    const value = widget?.value ?? "";
                     if (slot.textarea.value !== value) slot.textarea.value = value;
                 });
             };
@@ -568,7 +705,7 @@ app.registerExtension({
                 if (!list.length) return;
                 const safe = Math.min(Math.max(index, 0), list.length - 1);
                 node.properties.pz_round_index = safe;
-                const target = editTargetWidget?.value === "Image 2" ? 2 : 1;
+                const target = IS_SINGLE ? (editTargetWidget?.value === "Image 2" ? 2 : 1) : 1;
                 const slot = slots[target - 1];
                 if (!isLinked(slot.slotNumber)) {
                     const widget = widgetFor(slot.slotNumber);
@@ -581,9 +718,14 @@ app.registerExtension({
                 refreshRoundButtons();
                 refreshCompare();
                 // 翻轮次时同步：被监听的加载图片节点也更新为当前轮图
-                if (IS_SINGLE) {
+                {
                     const loaderId = currentLoadListenId();
-                    if (loaderId) writeBackToLoader(loaderId);
+                    if (loaderId) writeBackToLoader(loaderId, 1);
+                    // 双图版图2 为固定参考图、不回传，轮次切换不更新图2 加载节点
+                    if (IS_SINGLE) {
+                        const loaderId2 = currentLoadListenId2();
+                        if (loaderId2) writeBackToLoader(loaderId2, 2);
+                    }
                 }
             };
             prevRoundButton.addEventListener("click", () => applyRound(roundIndex() - 1));
@@ -651,15 +793,86 @@ app.registerExtension({
             };
             // —— 加载图监听：选择工作流中的图片加载节点，同步其第一张图作为编辑源 ——
             const loadListenOptions = () => {
+                // 注意：这里刻意不过滤“忽略 / 禁用”的加载节点——否则节点被忽略后会从下拉里消失、绑定一起失效
                 return (app.graph?._nodes || [])
-                    .filter((item) => item && isActiveNode(item) && isImageLoadNode(item))
-                    .map((item) => ({ id: String(item.id), type: item.type, label: `图片加载 #${item.id}${item.title ? ` · ${item.title}` : ""}` }));
+                    .filter((item) => item && isImageLoadNode(item))
+                    .map((item) => {
+                        const ignored = isLoaderNodeIgnored(item);
+                        return {
+                            id: String(item.id),
+                            type: item.type,
+                            ignored,
+                            label: `图片加载 #${item.id}${item.title ? ` · ${item.title}` : ""}${ignored ? "（已忽略）" : ""}`,
+                        };
+                    });
             };
             const currentLoadListenId = () => {
                 const options = loadListenOptions();
                 const saved = node.properties?.pz_load_listen;
                 if (saved && options.some((item) => item.id === String(saved))) return String(saved);
                 return "";
+            };
+            // 双图版图2 的加载图绑定取值
+            const currentLoadListenId2 = () => {
+                const options = loadListenOptions();
+                const saved = node.properties?.pz_load_listen2;
+                if (saved && options.some((item) => item.id === String(saved))) return String(saved);
+                return "";
+            };
+            // 正向同步：绑定的图片加载节点被忽略 / 恢复 → 本节点图2 跟随变灰（运行时轮询触发）
+            const pullIgnoreFromLoader = () => {
+                if (!ignoreReady || ignoreSyncGuard) return;
+                const lid2 = currentLoadListenId2();
+                const loader = lid2 ? findNodeById(lid2) : null;
+                if (!loader) return;
+                const off = isLoaderNodeIgnored(loader);
+                if (off === isImage2Disabled()) return;
+                ignoreSyncGuard = true;
+                try {
+                    if (disableWidget) {
+                        disableWidget.value = off;
+                        disableWidget.callback?.call(disableWidget, off);
+                    }
+                } finally {
+                    ignoreSyncGuard = false;
+                }
+                applyImage2Disabled(true);
+            };
+            // 绑定取值函数已就绪后，同步一次“忽略”状态并应用初始视觉（避免 TDZ）
+            const initIgnoreSync = () => {
+                const lid2 = currentLoadListenId2();
+                const loader = lid2 ? findNodeById(lid2) : null;
+                if (loader) {
+                    if (isImage2Disabled()) {
+                        // 本节点已勾选忽略 → 让绑定节点一起忽略
+                        setLoaderIgnored(loader, true);
+                    } else if (isLoaderNodeIgnored(loader)) {
+                        // 绑定节点已忽略 → 图2 跟随变灰
+                        if (disableWidget) {
+                            disableWidget.value = true;
+                            disableWidget.callback?.call(disableWidget, true);
+                        }
+                    }
+                }
+                applyImage2Disabled();
+                ignoreReady = true;
+            };
+            initIgnoreSync();
+            const refreshLoadListenSelect2 = () => {
+                if (!loadListenSelect2) return;
+                const current = currentLoadListenId2();
+                loadListenSelect2.innerHTML = "";
+                const placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.textContent = "— 不监听 —";
+                loadListenSelect2.appendChild(placeholder);
+                loadListenOptions().forEach((opt) => {
+                    const o = document.createElement("option");
+                    o.value = opt.id;
+                    o.textContent = opt.label;
+                    loadListenSelect2.appendChild(o);
+                });
+                loadListenSelect2.value = current;
             };
             const refreshLoadListenSelect = () => {
                 if (!loadListenSelect) return;
@@ -737,12 +950,15 @@ app.registerExtension({
                     refreshLoadListenSelect();
                 }
             };
-            // 初次加载：未保存过监听选择时，默认选中工作流里第一个图片加载节点 / 第一个提示词文本节点
+            // 初次加载：未保存过监听选择时，默认选中工作流里第一个图片加载节点 / 第一个提示词文本节点；双图版图2 默认选第二个加载节点
             const applyDefaultListenSelection = () => {
-                if (!IS_SINGLE) return;
                 if (!Object.prototype.hasOwnProperty.call(node.properties || {}, "pz_load_listen")) {
                     const first = loadListenOptions()[0];
                     if (first) node.properties.pz_load_listen = first.id;
+                }
+                if (!IS_SINGLE && !Object.prototype.hasOwnProperty.call(node.properties || {}, "pz_load_listen2")) {
+                    const second = loadListenOptions()[1];
+                    if (second) node.properties.pz_load_listen2 = second.id;
                 }
                 if (!Object.prototype.hasOwnProperty.call(node.properties || {}, "pz_prompt_listen")) {
                     const first = promptListenOptions()[0];
@@ -779,20 +995,24 @@ app.registerExtension({
             loadListenSelect.addEventListener("focus", refreshLoadListenSelect);
             loadListenSelect.addEventListener("change", () => {
                 node.properties.pz_load_listen = loadListenSelect.value;
-                if (IS_SINGLE) {
-                    detachHijack();
-                    if (loadListenSelect.value) attachHijack(loadListenSelect.value);
-                    else applyDefaultImageFromFirstLoader();
-                }
+                detachHijack(1);
+                if (loadListenSelect.value) attachHijack(loadListenSelect.value, 1);
+                else if (IS_SINGLE) applyDefaultImageFromFirstLoader();
+            });
+            loadListenSelect2?.addEventListener("mousedown", refreshLoadListenSelect2);
+            loadListenSelect2?.addEventListener("focus", refreshLoadListenSelect2);
+            loadListenSelect2?.addEventListener("change", () => {
+                node.properties.pz_load_listen2 = loadListenSelect2.value;
+                detachHijack(2);
+                if (loadListenSelect2.value && !isImage2Disabled()) attachHijack(loadListenSelect2.value, 2);
+                initIgnoreSync(); // 换绑后重新对齐两端的“忽略”状态
             });
             promptListenSelect.addEventListener("mousedown", refreshPromptListenSelect);
             promptListenSelect.addEventListener("focus", refreshPromptListenSelect);
             promptListenSelect.addEventListener("change", () => {
                 node.properties.pz_prompt_listen = promptListenSelect.value;
-                if (IS_SINGLE) {
-                    detachPromptHijack();
-                    if (promptListenSelect.value) attachPromptHijack(promptListenSelect.value);
-                }
+                detachPromptHijack();
+                if (promptListenSelect.value) attachPromptHijack(promptListenSelect.value);
             });
 
             const uploadFile = async (slot, file) => {
@@ -810,13 +1030,11 @@ app.registerExtension({
                     widget.value = name;
                     widget.callback?.call(widget, name);
                 }
-                pushRound(name);
+                if (slot.slotNumber === 1) pushRound(name);
                 refreshFilePreview(slot);
-                // 反向劫持：单图版手动换图 → 写回被监听的加载图源节点
-                if (IS_SINGLE && slot.slotNumber === 1) {
-                    const lid = currentLoadListenId();
-                    if (lid) writeBackToLoader(lid);
-                }
+                // 反向劫持：手动换图 → 写回被监听的加载图源节点（单图版 / 双图版图1+图2 均生效）
+                const loaderId = slot.slotNumber === 2 ? currentLoadListenId2() : currentLoadListenId();
+                if (loaderId && !(slot.slotNumber === 2 && isImage2Disabled())) writeBackToLoader(loaderId, slot.slotNumber);
             };
 
             slots.forEach((slot) => {
@@ -866,25 +1084,21 @@ app.registerExtension({
                         widget.value = slot.fileSelect.value;
                         widget.callback?.call(widget, slot.fileSelect.value);
                     }
-                    pushRound(slot.fileSelect.value);
+                    if (slot.slotNumber === 1) pushRound(slot.fileSelect.value);
                     refreshFilePreview(slot);
-                    // 反向劫持：单图版选图 → 写回被监听的加载图源节点
-                    if (IS_SINGLE && slot.slotNumber === 1) {
-                        const lid = currentLoadListenId();
-                        if (lid) writeBackToLoader(lid);
-                    }
+                    // 反向劫持：手动选图 → 写回被监听的加载图源节点（单图版 / 双图版图1+图2 均生效）
+                    const loaderId = slot.slotNumber === 2 ? currentLoadListenId2() : currentLoadListenId();
+                    if (loaderId) writeBackToLoader(loaderId, slot.slotNumber);
                 });
                 slot.textarea.addEventListener("input", () => {
-                    const widget = slot.slotNumber === 1 ? prompt1Widget : prompt2Widget;
+                    const widget = promptWidget;
                     if (widget) {
                         widget.value = slot.textarea.value;
                         widget.callback?.call(widget, slot.textarea.value);
                     }
-                    // 反向劫持：单图版改提示词 → 写回被监听的提示词源节点
-                    if (IS_SINGLE && slot.slotNumber === 1) {
-                        const pid = currentPromptListenId();
-                        if (pid) writeBackToPromptSource(pid, slot.textarea.value);
-                    }
+                    // 反向劫持：改提示词 → 写回被监听的提示词源节点（单图版 / 双图版均生效）
+                    const pid = currentPromptListenId();
+                    if (pid) writeBackToPromptSource(pid, slot.textarea.value);
                 });
             });
 
@@ -1025,15 +1239,15 @@ app.registerExtension({
                     })
                     .catch((error) => console.warn("[PZ Dual Image] Cannot import result image", error));
             };
-            // 劫持模式：把当前轮结果图写回被监听的加载图源节点，让整张工作流的源图随编辑迭代
-            const writeBackToLoader = (loaderId) => {
-                const img = widget1.value;
+            // 劫持模式：把当前轮结果图写回被监听的加载图源节点（slotNumber 指定图1/图2），让整张工作流的源图随编辑迭代
+            const writeBackToLoader = (loaderId, slotNumber = 1) => {
+                const img = widgetFor(slotNumber)?.value;
                 if (!img) return;
                 const loader = (app.graph?._nodes || []).find((n) => String(n.id) === loaderId);
                 const w = loader?.widgets?.find((x) => x.name === "image");
                 if (!w || w.value === img) return;
                 w.value = img;
-                w.callback?.call(w, img); // 触发其回调（含劫持同步），刷新加载节点与单图版
+                w.callback?.call(w, img); // 触发其回调（含劫持同步），刷新加载节点与本节点
             };
             // 劫持模式：把单图版当前提示词写回被监听的提示词源节点（反向更新）
             const writeBackToPromptSource = (srcId, text) => {
@@ -1098,12 +1312,14 @@ app.registerExtension({
                     if (loaderId && (resultRef || loadRef)) writeBackToLoader(loaderId);
                     return;
                 }
-                const resultSlot = slots[1];
-                const resultLinked = isLinked(2);
+                const resultSlot = slots[0];
                 const ref = pendingResultImages[pendingResultImages.length - 1];
                 pendingResultImages = [];
-                if (!ref || resultLinked) return;
+                if (!ref) return;
                 await importResultImage(ref, resultSlot);
+                // 双图版：当前轮结果图写回图1 的加载图源节点，使图1 源图随编辑迭代；图2 保持固定参考图，不回传
+                const loaderId = currentLoadListenId();
+                if (loaderId) writeBackToLoader(loaderId);
             };
             api.addEventListener("execution_start", onExecutionStart);
             api.addEventListener("executed", onExecuted);
@@ -1133,15 +1349,23 @@ app.registerExtension({
             const autoFitDeadline = Date.now() + 8000;
             const syncHeight = () => {
                 const top = Number(layout.last_y);
-                container.style.height = Number.isFinite(top) && top > 0 ? `${Math.max(120, node.size[1] - top - 10)}px` : "280px";
+                const full = Number.isFinite(top) && top > 0 ? (node.size[1] - top - 10) : 270;
+                container.style.height = `${Math.max(120, full)}px`;
+                // 提示词（含绑定下拉）区域基本保持为节点高度的 1/3，剩余空间交给图片区
+                if (sourceRow) {
+                    const promptH = Math.max(90, Math.round(node.size[1] / 3));
+                    sourceRow.style.flex = "0 0 auto";
+                    sourceRow.style.height = `${promptH}px`;
+                }
             };
             // 新建节点时按内容把节点撑高，避免自定义界面被节点底部裁掉。
             // 内容可能还没布局完（首次测量偏小），所以 8 秒内会持续重试，直到“内容放得下”或超时
             const autoFitHeight = () => {
                 if (autoFitDone) return syncHeight();
                 // 对照模式下确保节点宽度足够容纳两张并排的图（初始/加载时 setSize 可能未及时生效）
-                if (IS_SINGLE && compareMode && node.size[0] < COMPARE_WIDTH) {
-                    node.setSize([COMPARE_WIDTH, node.size[1]]);
+                const cw = IS_SINGLE ? COMPARE_WIDTH : COMPARE_WIDTH_DUAL;
+                if (compareMode && node.size[0] < cw) {
+                    node.setSize([cw, node.size[1]]);
                 }
                 const top = Number(layout.last_y);
                 if (!Number.isFinite(top) || top <= 0) return;
@@ -1166,6 +1390,7 @@ app.registerExtension({
             };
             // 尺寸或 DOM 控件位置一变就重算高度：新建 / 载入工作流 / 手动缩放都能对齐
             let lastSyncKey = "";
+            let lastIgnorePoll = 0;
             const originalDrawForeground = node.onDrawForeground;
             node.onDrawForeground = function (...args) {
                 const key = `${node.size[0]}x${node.size[1]}:${Number(layout.last_y) || 0}`;
@@ -1175,6 +1400,12 @@ app.registerExtension({
                 }
                 // 首次拿到 last_y 之前自适应不会生效，这里补一次，避免界面被裁掉
                 if (!autoFitDone) autoFitHeight();
+                // 轻量轮询：绑定节点被忽略 / 恢复时，让图2 跟随变灰（限频 200ms）
+                const now = Date.now();
+                if (now - lastIgnorePoll > 200) {
+                    lastIgnorePoll = now;
+                    pullIgnoreFromLoader();
+                }
                 return originalDrawForeground?.apply(this, args);
             };
 
@@ -1192,15 +1423,21 @@ app.registerExtension({
                 refreshListenSelect();
                 applyDefaultListenSelection();
                 refreshLoadListenSelect();
+                refreshLoadListenSelect2();
                 refreshPromptListenSelect();
-                if (IS_SINGLE) {
+                {
                     const lid = currentLoadListenId();
-                    if (lid) attachHijack(lid);
-                    else applyDefaultImageFromFirstLoader();
+                    if (lid) attachHijack(lid, 1);
+                    else if (IS_SINGLE) applyDefaultImageFromFirstLoader();
+                    if (!IS_SINGLE) {
+                        const lid2 = currentLoadListenId2();
+                        if (lid2 && !isImage2Disabled()) attachHijack(lid2, 2);
+                    }
                     const pid = currentPromptListenId();
                     if (pid) attachPromptHijack(pid);
+                    if (!IS_SINGLE) initIgnoreSync();
                 }
-                if (IS_SINGLE && compareMode) setCompareMode(true);
+                if (compareMode) setCompareMode(true);
                 syncHeight();
                 return configured;
             };
@@ -1214,15 +1451,21 @@ app.registerExtension({
                 refreshListenSelect();
                 applyDefaultListenSelection();
                 refreshLoadListenSelect();
+                refreshLoadListenSelect2();
                 refreshPromptListenSelect();
-                if (IS_SINGLE) {
+                {
                     const lid = currentLoadListenId();
-                    if (lid) attachHijack(lid);
-                    else applyDefaultImageFromFirstLoader();
+                    if (lid) attachHijack(lid, 1);
+                    else if (IS_SINGLE) applyDefaultImageFromFirstLoader();
+                    if (!IS_SINGLE) {
+                        const lid2 = currentLoadListenId2();
+                        if (lid2 && !isImage2Disabled()) attachHijack(lid2, 2);
+                    }
                     const pid = currentPromptListenId();
                     if (pid) attachPromptHijack(pid);
+                    if (!IS_SINGLE) initIgnoreSync();
                 }
-                if (IS_SINGLE) refreshCompare();
+                refreshCompare();
                 if (!roundsList().length) pushRound(widget1?.value || widget2?.value);
             });
 
@@ -1233,16 +1476,22 @@ app.registerExtension({
                 refreshListenSelect();
                 applyDefaultListenSelection();
                 refreshLoadListenSelect();
+                refreshLoadListenSelect2();
                 refreshPromptListenSelect();
-                if (IS_SINGLE) {
+                {
                     const lid = currentLoadListenId();
-                    if (lid) attachHijack(lid);
-                    else applyDefaultImageFromFirstLoader();
+                    if (lid) attachHijack(lid, 1);
+                    else if (IS_SINGLE) applyDefaultImageFromFirstLoader();
+                    if (!IS_SINGLE) {
+                        const lid2 = currentLoadListenId2();
+                        if (lid2 && !isImage2Disabled()) attachHijack(lid2, 2);
+                    }
                     const pid = currentPromptListenId();
                     if (pid) attachPromptHijack(pid);
+                    if (!IS_SINGLE) initIgnoreSync();
                 }
-                if (IS_SINGLE && compareMode) setCompareMode(true); // 延迟兜底：节点挂载后确保对照布局与宽度已撑开
-                if (IS_SINGLE) refreshCompare();
+                if (compareMode) setCompareMode(true); // 延迟兜底：节点挂载后确保对照布局与宽度已撑开
+                refreshCompare();
                 autoFitHeight(); // 只在内容放不下时才把节点撑高，已够大就保持原尺寸
                 node.setDirtyCanvas?.(true, true);
             }, 100);

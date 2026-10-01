@@ -38,22 +38,17 @@ class PZ_Dual_Image_Loader:
             "required": {
                 "image_1": (files, {"image_upload": True}),
                 "image_2": (files, {"image_upload": True}),
-                "output_select": (["Image 1", "Image 2", "Both (batch)"], {"default": "Image 1"}),
-                "prompt_1": ("STRING", {"multiline": True, "default": "", "placeholder": "Edit prompt for Image 1..."}),
-                "prompt_2": ("STRING", {"multiline": True, "default": "", "placeholder": "Edit prompt for Image 2..."}),
-                "edit_target": (["Image 1", "Image 2"], {"default": "Image 1"}),
+                "prompt": ("STRING", {"multiline": True, "default": "", "placeholder": "Edit prompt..."}),
                 # 监听来源：默认取“保存图片”节点的输出，切到“标记节点”后只认 PZ_Listen_Marker
                 "listen_source": (["保存图片节点 / Save Image", "标记节点 / Marker"], {"default": "保存图片节点 / Save Image"}),
-            },
-            "optional": {
-                "input_image_1": ("IMAGE",),
-                "input_image_2": ("IMAGE",),
+                # 开关：开启后忽略图2（预览框变灰、停止与绑定节点的双向同步），实际只输出 image_1 + 提示词
+                "disable_image_2": ("BOOLEAN", {"default": False, "label_on": "忽略图2 / Ignore", "label_off": "启用图2 / Enable"}),
             },
             "hidden": {"unique_id": "UNIQUE_ID"},
         }
 
-    RETURN_TYPES = ("IMAGE", "MASK", "STRING")
-    RETURN_NAMES = ("image", "mask", "text")
+    RETURN_TYPES = ("IMAGE", "IMAGE", "STRING")
+    RETURN_NAMES = ("image_1", "image_2", "text")
     FUNCTION = "load"
     CATEGORY = "PZ EasyUse"
 
@@ -69,20 +64,16 @@ class PZ_Dual_Image_Loader:
             Image.fromarray(frame).save(os.path.join(PREVIEW_DIR, f"{unique_id}_{slot}.png"))
         return tensor, mask
 
-    def load(self, image_1, image_2, output_select, prompt_1="", prompt_2="", edit_target="Image 1", listen_source="保存图片节点 / Save Image", input_image_1=None, input_image_2=None, unique_id=None):
-        img1, mask1 = self.resolve(image_1, input_image_1, unique_id, 1)
-        img2, mask2 = self.resolve(image_2, input_image_2, unique_id, 2)
-        text = prompt_1 if edit_target == "Image 1" else prompt_2
-
-        if output_select == "Image 2":
-            return (img2, mask2, text)
-        if output_select == "Both (batch)":
-            if img2.shape[1:3] != img1.shape[1:3]:
-                size = (img1.shape[1], img1.shape[2])
-                img2 = torch.nn.functional.interpolate(img2.permute(0, 3, 1, 2), size=size, mode="bilinear", align_corners=False).permute(0, 2, 3, 1)
-                mask2 = torch.nn.functional.interpolate(mask2[None], size=size, mode="bilinear", align_corners=False)[0]
-            return (torch.cat([img1, img2], dim=0), torch.cat([mask1, mask2], dim=0), text)
-        return (img1, mask1, text)
+    def load(self, image_1, image_2, prompt="", listen_source="保存图片节点 / Save Image", disable_image_2=False, unique_id=None):
+        img1, mask1 = self.resolve(image_1, None, unique_id, 1)
+        if disable_image_2:
+            # 图2 被忽略：输出 1x1 占位（保持输出端口不变），实际工作流只用 image_1 + 提示词
+            img2 = torch.zeros((1, 1, 1, 3), dtype=torch.float32)
+        else:
+            img2, mask2 = self.resolve(image_2, None, unique_id, 2)
+        # 提示词由本节点直接编辑/绑定，不从其他节点接入
+        text = prompt
+        return (img1, img2, text)
 
 
 class PZ_Single_Image_Loader:
