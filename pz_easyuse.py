@@ -141,10 +141,19 @@ class PZ_Resolution_Selector:
         return (h, w) if kwargs.get("swap_width_height") else (w, h)
 
 # ==========================================
+# Helper: restrict PZ API endpoints to local requests only
+# ==========================================
+def _is_local_request(request):
+    peer = request.remote
+    return peer in ("127.0.0.1", "::1", "localhost")
+
+# ==========================================
 # API: Open Folder (Keep as is)
 # ==========================================
 @server.PromptServer.instance.routes.post("/pz/open_output_dir")
 async def open_output_dir(request):
+    if not _is_local_request(request):
+        return web.json_response({"message": "Forbidden"}, status=403)
     try:
         try:
             payload = await request.json()
@@ -171,6 +180,8 @@ async def open_output_dir(request):
 @server.PromptServer.instance.routes.get("/pz/image_metadata")
 async def get_image_metadata(request):
     """Return PNG text metadata for the image picker preview."""
+    if not _is_local_request(request):
+        return web.json_response({"error": "Forbidden"}, status=403)
     filename = request.query.get("filename", "")
     if not filename:
         return web.json_response({"error": "filename is required"}, status=400)
