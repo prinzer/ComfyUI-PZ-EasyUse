@@ -49,11 +49,67 @@ const JOINT_BONES = { ls: 'upperarm_l', le: 'lowerarm_l', lw: 'hand_l', rs: 'upp
 // the VNCCS loader accepts both (it checks the gzip magic bytes).
 const BODY_PACK_URLS = ['pose_studio_makehuman.v2.bin', 'pose_studio_makehuman.v2.bin.gz'].map(name => new URL(`../vnccs/assets/${name}`, import.meta.url));
 
-async function loadBodyPack() {
+// 文件不在时的自救：先让服务端在 assets 里找压缩包解压，没有再自动下载（前端显示进度），
+// 两条路都走不通才抛错。服务端接口是本插件 Python 侧的 /pz_easyuse/pose-model/*。
+const POSE_MODEL_API = '/pz_easyuse/pose-model';
+const POSE_MODEL_WAIT_MS = 30 * 60 * 1000;
+let poseModelError = '';
+
+function poseModelProgressText(status) {
+    const mb = value => (Number(value || 0) / 1048576).toFixed(1);
+    if (status?.state === 'working' && status?.source === 'download' && status?.total > 0) {
+        return `正在下载人偶模型… ${mb(status.bytes)} / ${mb(status.total)} MB`;
+    }
+    if (status?.state === 'working' && status?.source === 'extract') {
+        return status?.total > 0 && status?.progress >= 0
+            ? `正在解压人偶模型… ${mb(status.bytes)} / ${mb(status.total)} MB`
+            : '正在解压人偶模型（外部工具，进度无法预估）…';
+    }
+    return status?.message || '正在准备人偶模型…';
+}
+
+async function repairBodyPackFromServer(force = false) {
+    const setLoading = text => { const element = $('#loading-text'); if (element) element.textContent = text; };
+    try {
+        const response = await fetch(`${POSE_MODEL_API}/ensure`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ force }),
+        });
+        if (!response.ok) return false; // 服务端没这个接口（旧版本）：直接走原来的报错
+    } catch { return false; }
+    const deadline = Date.now() + POSE_MODEL_WAIT_MS;
+    while (Date.now() < deadline) {
+        let status = null;
+        try {
+            const response = await fetch(`${POSE_MODEL_API}/status`, { cache: 'no-store' });
+            if (!response.ok) return false;
+            status = await response.json();
+        } catch { return false; }
+        if (status?.state === 'ready') return true;
+        if (status?.state === 'error') {
+            poseModelError = status?.message || '';
+            setLoading(status?.message || '人偶模型准备失败');
+            return false;
+        }
+        setLoading(poseModelProgressText(status));
+        await new Promise(resolve => setTimeout(resolve, 800));
+    }
+    return false;
+}
+
+async function loadBodyPack(attempt = 0) {
     for (const url of BODY_PACK_URLS) {
         try { return await loadMorphPack(url); } catch { /* missing or truncated: try the next copy */ }
     }
-    throw new Error('人体数据文件缺失或不完整（web/vnccs/assets/pose_studio_makehuman.v2.bin，约 86MB）。可能被网盘删除或没下载完整，请从 GitHub 重新下载插件：github.com/Work-Fisher/ComfyUI-Fisher-Pose');
+    if (attempt === 0 && await repairBodyPackFromServer()) {
+        // 服务端刚把文件补上：加时间戳跳过浏览器缓存（之前那个 404 可能已被缓存）
+        const url = new URL(BODY_PACK_URLS[0]);
+        url.searchParams.set('t', String(Date.now()));
+        return await loadMorphPack(url);
+    }
+    const suffix = poseModelError ? `已尝试自动解压压缩包并自动下载，仍失败：${poseModelError}。` : '';
+    throw new Error(`${suffix}人体数据文件缺失或不完整（js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.bin，约 86MB）。请把模型放到该路径，或手动下载：github.com/prinzer/ComfyUI-PZ-EasyUse/raw/with-model/js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.bin`);
 }
 
 let doc = { mesh: { ...DEFAULT_MESH }, proportions: { ...DEFAULT_PROPORTIONS }, pose: null, transform: { ...NEUTRAL_TRANSFORM }, width: 1024, height: 1024, openpose: null, camera: { ...DEFAULT_CAMERA } };

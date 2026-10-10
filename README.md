@@ -35,7 +35,13 @@ ComfyUI/custom_nodes/ComfyUI-PZ-EasyUse/js/fisher_editor/vnccs/assets/pose_studi
 git clone -b with-model https://github.com/prinzer/ComfyUI-PZ-EasyUse.git
 ```
 
-没放、放错目录或下载不完整时，编辑器会提示「人体数据文件缺失或不完整」。人偶数据为 CC0-1.0，许可见 `js/fisher_editor/vnccs/LICENSE` 与 `js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.CC0-1.0.md`。
+**一般情况下什么都不用做**：仓库自带 `assets/pose_studio_makehuman.v2.rar`（3.8MB，解压后即上面的 86,187,496 字节），clone 下来就已在位。编辑器打开时若 `.bin` 缺失，服务端会：
+
+1. 先在 `assets/`（以及 `js/`、插件根目录）找 `pose_studio_makehuman*.zip/.rar/.7z/.gz/...` 并**自动解压**（编辑器显示「正在解压人偶模型…」）；`.zip/.gz/.bz2/.tar` 用 Python 标准库，`.rar/.7z` 需要本机有 7-Zip / WinRAR / unrar；
+2. 没有压缩包才**自动下载**上面的直链（显示「正在下载人偶模型… 12.3 / 82.0 MB」，可用环境变量 `PZ_POSE_MODEL_URL` 换源）；
+3. 两者都失败，才提示「人体数据文件缺失或不完整」，再按上面的手动方式补。
+
+人偶数据为 CC0-1.0，许可见 `js/fisher_editor/vnccs/LICENSE` 与 `js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.CC0-1.0.md`。
 
 <img src="./images/PZ_Pose_Dual_Image_Loader.png" />
 
@@ -205,7 +211,13 @@ ComfyUI/custom_nodes/ComfyUI-PZ-EasyUse/js/fisher_editor/vnccs/assets/pose_studi
 git clone -b with-model https://github.com/prinzer/ComfyUI-PZ-EasyUse.git
 ```
 
-没放、放错目录或下载不完整时，编辑器会提示「人体数据文件缺失或不完整」。人偶数据为 CC0-1.0，许可见 `js/fisher_editor/vnccs/LICENSE` 与 `js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.CC0-1.0.md`。
+**一般情况下什么都不用做**：仓库自带 `assets/pose_studio_makehuman.v2.rar`（3.8MB，解压后即上面的 86,187,496 字节），clone 下来就已在位。编辑器打开时若 `.bin` 缺失，服务端会：
+
+1. 先在 `assets/`（以及 `js/`、插件根目录）找 `pose_studio_makehuman*.zip/.rar/.7z/.gz/...` 并**自动解压**（编辑器显示「正在解压人偶模型…」）；`.zip/.gz/.bz2/.tar` 用 Python 标准库，`.rar/.7z` 需要本机有 7-Zip / WinRAR / unrar；
+2. 没有压缩包才**自动下载**上面的直链（显示「正在下载人偶模型… 12.3 / 82.0 MB」，可用环境变量 `PZ_POSE_MODEL_URL` 换源）；
+3. 两者都失败，才提示「人体数据文件缺失或不完整」，再按上面的手动方式补。
+
+人偶数据为 CC0-1.0，许可见 `js/fisher_editor/vnccs/LICENSE` 与 `js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.CC0-1.0.md`。
 
 <img src="./images/PZ_Pose_Dual_Image_Loader.png" />
 

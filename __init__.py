@@ -7,6 +7,9 @@ from .pz_minimax import PZ_Minimax_Prompt
 from .pz_universal_prompt import PZ_Universal_Prompt
 from .pz_dual_image import PZ_Dual_Image_Loader, PZ_Listen_Marker, PZ_Single_Image_Loader
 from .pz_pose_dual_image import PZ_Pose_Dual_Image_Loader
+# 人偶模型（pose_studio_makehuman.v2.bin）缺失时自动解压 / 自动下载：导入即注册
+# /pz_easyuse/pose-model/status 与 /pz_easyuse/pose-model/ensure 两个接口
+from . import pz_pose_model  # noqa: F401
 
 # Internationalization support
 # Note: Python side doesn't have direct access to frontend language setting
