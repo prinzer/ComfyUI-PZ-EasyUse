@@ -2,5 +2,8 @@ __pycache__
 .pyc
 .git
 .DS_Store
-# vendored Fisher-Pose 3D 姿势编辑器（从 ComfyUI-Fisher-Pose/web 复制，含 ~86MB 模型，不入库）
-js/fisher_editor/
+# 编辑器本身（js/fisher_editor/）随仓库分发，无需再装 ComfyUI-Fisher-Pose；
+# 但约 82MB 的 MakeHuman 人偶模型不入库（否则 clone 要拉 90MB），按 README 下载一次即可。
+# 想连模型一起拿：git clone -b with-model https://github.com/prinzer/ComfyUI-PZ-EasyUse.git
+js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.bin
+js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.bin.gz

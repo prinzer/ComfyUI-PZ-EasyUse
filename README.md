@@ -13,6 +13,7 @@
 - **姿势编辑器（VNCCS 3D 人偶）**：OpenPose 一键摆姿、拖关节摆姿（手脚髋 IK）、深度修正、手势 / 体型 / 比例微调、「我的姿势」「我的身材」预设。
 - **骨架编辑器（OpenPose COCO-18）**：基于 fabric.js 的二维骨架编辑器，拖 18 个关键点摆姿、增删与补全、导入 / 导出 openpose JSON。
 - **`⚙ 设置` 移进编辑器**（挨着 `锁定比例`）：SDPose 绘制参数、提取前缩放、`保留图1 背景`，改完写回本节点的隐藏控件 `sdpose_settings`，随工作流保存。
+- **编辑器随仓库自带**，无需再装 ComfyUI-Fisher-Pose；其中约 82MB 的 MakeHuman 人偶模型不随仓库分发，首次使用前下载一次放到 `js/fisher_editor/vnccs/assets/`，见下方「人偶模型（约 82MB，首次使用下载一次）」。
 - 其余劫持 / 结果图回流 / 轮次 / 对照 / 用时显示与双图版一致。
 
 <img src="./images/PZ_Pose_Dual_Image_Loader.png" />
@@ -161,7 +162,29 @@ Generator List (Batch List)：“生成数组/List，一次给 K 采样器，一
 
 基于 **PZ 2图加载编辑**：图1 仍是编辑目标，区别是**图2 可以不来自图片，而由内置的 VNCCS 3D 人偶编辑器生成姿势图**（即 ControlNet / 重绘常用的 OpenPose 骨架人偶图）。其余劫持、结果图回流、轮次、对照等能力与双图版一致。
 
-> 依赖：姿势编辑器复用 [ComfyUI-Fisher-Pose](https://github.com/Work-Fisher/ComfyUI-Fisher-Pose) 的 VNCCS 编辑器与约 86MB 人偶模型（`web/vnccs/assets/pose_studio_makehuman.v2.bin`）。请先安装该节点并确保模型就位；本节点仅负责打开它的编辑器并把生成的人偶图作为 `image_2` 输出。
+> 姿势编辑器内置：仓库自带 `js/fisher_editor/`（源自 [ComfyUI-Fisher-Pose](https://github.com/Work-Fisher/ComfyUI-Fisher-Pose) 的 VNCCS 编辑器），**无需再安装原节点**。本节点负责在 iframe 里打开它、传图 / 收图，并把生成的人偶图作为 `image_2` 输出。
+> 其中约 82MB 的 **MakeHuman 人偶模型不随仓库分发**（否则一次 clone 要拉 90MB），首次使用前下载一次即可，见下。
+
+### 人偶模型（约 82MB，首次使用下载一次）
+
+把模型放到下面这个**确切路径，文件名不要改**：
+
+```
+ComfyUI/custom_nodes/ComfyUI-PZ-EasyUse/js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.bin
+```
+
+下载（两个源内容相同，均为 86,187,496 字节，任选其一）：
+
+1. 本仓库 `with-model` 分支直链（版本与本插件一致，推荐）：<https://github.com/prinzer/ComfyUI-PZ-EasyUse/raw/with-model/js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.bin>
+2. 上游 ComfyUI-Fisher-Pose：<https://raw.githubusercontent.com/Work-Fisher/ComfyUI-Fisher-Pose/main/web/vnccs/assets/pose_studio_makehuman.v2.bin>
+
+想连模型一起 clone（体积约 90MB）：
+
+```
+git clone -b with-model https://github.com/prinzer/ComfyUI-PZ-EasyUse.git
+```
+
+没放、放错目录或下载不完整时，编辑器会提示「人体数据文件缺失或不完整」。人偶数据为 CC0-1.0，许可见 `js/fisher_editor/vnccs/LICENSE` 与 `js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.CC0-1.0.md`。
 
 <img src="./images/PZ_Pose_Dual_Image_Loader.png" />
 
