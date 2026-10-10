@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PZ OpenPose 骨架编辑器</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #1b1e24; color: #e6e9ef;
+    font-family: -apple-system, "Segoe UI", Arial, "Microsoft YaHei", sans-serif;
+    overflow: hidden;
+  }
+  #app { display: flex; flex-direction: column; height: 100%; }
+  #header {
+    flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; gap: 10px;
+    background: #23262e; border-bottom: 1px solid #39414f;
+  }
+  #header .title { font-size: 14px; font-weight: 700; margin-right: auto; }
+  #header .hint { font-size: 11px; color: #9aa4b2; }
+  #stage {
+    flex: 1 1 auto; position: relative; display: flex; align-items: center; justify-content: center;
+    overflow: hidden; padding: 12px;
+  }
+  #canvas-wrap { position: relative; box-shadow: 0 8px 30px #0008; }
+  #op-canvas { border: 1px solid #444; border-radius: 4px; background: #000; display: block; }
+  #footer {
+    flex: 0 0 auto; padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    background: #23262e; border-top: 1px solid #39414f;
+  }
+  button {
+    background: #2c313c; color: #e6e9ef; border: 1px solid #444; border-radius: 6px;
+    padding: 5px 10px; font-size: 12px; cursor: pointer; white-space: nowrap;
+  }
+  button:hover { border-color: #6ea8fe; }
+  button.primary { background: #35a66f; border-color: #35a66f; color: #fff; font-weight: 700; }
+  button.primary:hover { filter: brightness(1.08); }
+  button.ghost { background: transparent; }
+  /* 开关类按钮（锁定比例 / 显示背景）选中时实心蓝 */
+  button.toggle.on { background: #456bea; border-color: #456bea; color: #fff; font-weight: 700; }
+  button.toggle.on:hover { filter: brightness(1.08); }
+  button:disabled { opacity: .4; cursor: default; }
+  button:disabled:hover { border-color: #444; }
+  label.dim { font-size: 11px; color: #9aa4b2; display: inline-flex; align-items: center; gap: 4px; }
+  input[type="number"] { width: 60px; background: #1c1c1c; color: #aaa; border: 1px solid #444; border-radius: 4px; padding: 2px 4px; }
+  input[type="file"] { display: none; }
+  .sep { width: 1px; height: 20px; background: #39414f; margin: 0 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <span class="title">PZ OpenPose 骨架编辑器</span>
+    <span class="hint">拖拽关键点摆姿 · Alt+拖动平移 · 滚轮缩放 · Ctrl+Z 撤销 · 开了「锁定比例」则手脚长度不变</span>
+  </div>
+  <div id="stage">
+    <div id="canvas-wrap"><canvas id="op-canvas" width="512" height="512"></canvas></div>
+  </div>
+  <div id="footer">
+    <button id="btn-undo" title="撤销上一步（Ctrl+Z）">↶ 撤销</button>
+    <button id="btn-redo" title="重做（Ctrl+Shift+Z / Ctrl+Y）">↷ 重做</button>
+    <span class="sep"></span>
+    <button id="btn-add">新增人</button>
+    <button id="btn-del">删点</button>
+    <button id="btn-clear">清空</button>
+    <button id="btn-reset">重置</button>
+    <button id="btn-fix">补全</button>
+    <span class="sep"></span>
+    <button id="btn-load">加载JSON</button>
+    <button id="btn-save">保存JSON</button>
+    <button id="btn-bg">背景图</button>
+    <button id="btn-bg-toggle" class="toggle">🙈 隐藏背景</button>
+    <span class="sep"></span>
+    <button id="btn-lock" class="toggle" title="点一下锁定：拖关节时手脚长度保持不变，只转关节">🔓 锁定比例</button>
+    <button id="btn-settings" class="toggle" title="SDPose 设置：骨架绘制参数 / 提取前缩放 / 点「应用到节点」时是否保留图1 背景（存在节点上，随工作流保存）">⚙ 设置</button>
+    <span class="sep"></span>
+    <label class="dim">宽<input id="w-input" type="number" min="64" max="4096" step="64" value="512"></label>
+    <label class="dim">高<input id="h-input" type="number" min="64" max="4096" step="64" value="512"></label>
+    <span class="sep"></span>
+    <button id="btn-cancel" class="ghost">关闭</button>
+    <button id="btn-apply" class="primary">应用到节点</button>
+    <input id="file-input" type="file" accept=".json" />
+    <input id="bg-input" type="file" accept="image/*" />
+  </div>
+</div>
+
+<script type="module">
+// fabric.min.js 是 ES module（export { default, fabric }），必须用 module 方式加载
+import * as fabricModule from "./fabric.min.js";
+// SDPose 设置面板：与节点上那个「设置」按钮同一套（纯 UI，不加载 ComfyUI 前端）
+import { SDPOSE_DEFAULTS, openSdposeSettingsPanel } from "../pz_sdpose_settings_ui.js";
+const fabric = fabricModule.fabric || fabricModule.default || fabricModule;
+window.fabric = fabric;
+(function () {
+  "use strict";
+
+  // ===== COCO-18 骨架定义（参考 DocKr ComfyUI-OpenPose-Editor）=====
+  // 关键点索引：0鼻 1颈 2右肩 3右肘 4右腕 5左肩 6左肘 7左腕
+  //            8右髋 9右膝 10右踝 11左髋 12左膝 13左踝 14右眼 15左眼 16右耳 17左耳
+  const connect_keypoints = [
+    [0, 1], [1, 2], [2, 3], [3, 4],
+    [1, 5], [5, 6], [6, 7], [1, 8],
+    [8, 9], [9, 10], [1, 11], [11, 12],
+    [12, 13], [14, 0], [14, 16], [15, 0],
+    [15, 17]
+  ];
+  const connect_color = [
+    [0, 0, 255], [255, 0, 0], [255, 170, 0], [255, 255, 0],
+    [255, 85, 0], [170, 255, 0], [85, 255, 0], [0, 255, 0],
+    [0, 255, 85], [0, 255, 170], [0, 255, 255], [0, 170, 255],
+    [0, 85, 255], [85, 0, 255], [170, 0, 255], [255, 0, 255],
+    [255, 0, 170], [255, 0, 85]
+  ];
+  const DEFAULT_KEYPOINTS = [
+    [241, 77], [241, 120], [191, 118], [177, 183],
+    [163, 252], [298, 118], [317, 182], [332, 245],
+    [225, 241], [213, 359], [215, 454], [270, 240],
+    [282, 360], [286, 456], [232, 59], [253, 60],
+    [225, 70], [260, 72]
+  ];
+
+  const canvasElem = document.getElementById("op-canvas");
+  const wrap = document.getElementById("canvas-wrap");
+  let canvas = null;
+  let nextPoseId = 0;
+  let canvasWidth = 512, canvasHeight = 512;
+
+  function getFusiformPoints(start, end) {
+    const dx = end.x - start.x, dy = end.y - start.y;
+    let length = Math.sqrt(dx * dx + dy * dy) || 1;
+    const midX = (start.x + end.x) / 2, midY = (start.y + end.y) / 2;
+    const nx = -dy / length, ny = dx / length;
+    const halfWidth = 7;
+    return [
+      { x: start.x, y: start.y },
+      { x: midX + nx * halfWidth, y: midY + ny * halfWidth },
+      { x: end.x, y: end.y },
+      { x: midX - nx * halfWidth, y: midY - ny * halfWidth }
+    ];
+  }
+
+  function colorOf(i, a) {
+    const c = connect_color[i] || [255, 255, 255];
+    return a == null ? `rgb(${c[0]}, ${c[1]}, ${c[2]})` : `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${a})`;
+  }
+
+  function lockLine(line) {
+    line.set({
+      selectable: false, evented: false,
+      lockMovementX: true, lockMovementY: true, lockRotation: true,
+      lockScalingX: true, lockScalingY: true, lockSkewingX: true, lockSkewingY: true,
+      hasControls: false, hasBorders: false
+    });
+  }
+
+  function addPose(pose_keypoints_2d) {
+    pose_keypoints_2d = pose_keypoints_2d || [];
+    const poseId = nextPoseId;
+    const circles = {};
+    const lines = [];
+    for (let i = 0; i < 18; i++) {
+      const x = pose_keypoints_2d[i * 3], y = pose_keypoints_2d[i * 3 + 1], conf = pose_keypoints_2d[i * 3 + 2];
+      if (!conf) continue;
+      circles[i] = new fabric.Circle({
+        left: x, top: y, radius: 5,
+        fill: colorOf(i), stroke: colorOf(i),
+        originX: "center", originY: "center",
+        hasControls: false, hasBorders: false,
+        _id: i, _poseId: poseId
+      });
+    }
+    connect_keypoints.forEach((pair) => {
+      const s = circles[pair[0]], e = circles[pair[1]];
+      if (!s || !e) return;
+      const line = new fabric.Polygon(getFusiformPoints({ x: s.left, y: s.top }, { x: e.left, y: e.top }), {
+        fill: colorOf(pair[0], 0.75), strokeWidth: 0, originX: "center", originY: "center",
+        _startCircle: s, _endCircle: e, _poseId: poseId
+      });
+      lockLine(line);
+      lines.push(line);
+    });
+    nextPoseId++;
+    canvas.add(...lines, ...Object.values(circles));
+  }
+
+  function setPose(people) {
+    const bg = canvas.backgroundImage;
+    canvas.clear();
+    canvas.backgroundImage = bg;
+    canvas.backgroundColor = "#000";
+    nextPoseId = 0;
+    (people || []).forEach((p) => addPose(p.pose_keypoints_2d || []));
+    canvas.getObjects("polygon").forEach(lockLine);
+    canvas.getObjects().forEach((o) => o.setCoords());
+    canvas.renderAll();
+  }
+
+  function resetCanvas() {
+    canvas.clear();
+    canvas.setBackgroundImage(null, canvas.renderAll.bind(canvas));
+    canvas.backgroundColor = "#000";
+    nextPoseId = 0;
+  }
+
+  // 拖动某个关键点时，重画挂在它身上的骨头
+  function updateLines(target) {
+    if (!target || target.type !== "circle") return;
+    canvas.getObjects("polygon").forEach((poly) => {
+      if (poly._startCircle === target || poly._endCircle === target) {
+        poly.set({ points: getFusiformPoints(poly._startCircle.getCenterPoint(), poly._endCircle.getCenterPoint()) });
+        poly.setCoords();
+      }
+    });
+  }
+
+  // ===== 撤销 / 重做 =====
+  // 每改一次就存一份「关键点 + 画布尺寸」快照：拖动、增删、补全、加载 JSON、改宽高都记；
+  // 撤销 = 回到上一步快照（背景图不参与，撤销不会把对照图弄丢）
+  const HISTORY_LIMIT = 80;
+  let history = [], historyIndex = -1, restoringHistory = false;
+
+  function refreshHistoryButtons() {
+    const undoBtn = document.getElementById("btn-undo");
+    const redoBtn = document.getElementById("btn-redo");
+    if (undoBtn) undoBtn.disabled = historyIndex <= 0;
+    if (redoBtn) redoBtn.disabled = historyIndex >= history.length - 1;
+  }
+
+  function pushHistory() {
+    if (restoringHistory) return;
+    const snap = serializeJSON();
+    if (history[historyIndex] === snap) { refreshHistoryButtons(); return; } // 状态没变就不记
+    history.splice(historyIndex + 1); // 撤销之后又改了：原来的“重做”分支作废
+    history.push(snap);
+    if (history.length > HISTORY_LIMIT) history.shift();
+    historyIndex = history.length - 1;
+    refreshHistoryButtons();
+  }
+
+  function restoreHistory(snap) {
+    restoringHistory = true;
+    try {
+      const data = JSON.parse(snap);
+      if (data.width && data.height) resizeCanvas(data.width, data.height);
+      setPose(data.people || []);
+    } catch (e) { console.warn("撤销失败", e); }
+    finally { restoringHistory = false; }
+    refreshHistoryButtons();
+  }
+
+  function undo() { if (historyIndex > 0) restoreHistory(history[--historyIndex]); }
+  function redo() { if (historyIndex < history.length - 1) restoreHistory(history[++historyIndex]); }
+
+  // ===== 锁定身材比例（可选）=====
+  // 父子关系直接由「画出来的骨头」推出来（从脖子 1 做 BFS），和画面上的连接线永远一致。
+  const KEYPOINT_CHILDREN = (() => {
+    const children = {}, seen = new Set([1]), queue = [1];
+    while (queue.length) {
+      const p = queue.shift();
+      connect_keypoints.forEach(([a, b]) => {
+        let child = null;
+        if (a === p && !seen.has(b)) child = b;
+        else if (b === p && !seen.has(a)) child = a;
+        if (child == null) return;
+        seen.add(child);
+        (children[p] = children[p] || []).push(child);
+        queue.push(child);
+      });
+    }
+    return children;
+  })();
+  const KEYPOINT_PARENT = (() => {
+    const parent = {};
+    Object.keys(KEYPOINT_CHILDREN).forEach((p) => KEYPOINT_CHILDREN[p].forEach((c) => { parent[c] = Number(p); }));
+    return parent;
+  })();
+  function subtreeIds(id) {
+    const out = [id];
+    const walk = (k) => (KEYPOINT_CHILDREN[k] || []).forEach((c) => { out.push(c); walk(c); });
+    walk(id);
+    return out;
+  }
+
+  let lockProportions = false; // 「锁定比例」开关
+  let lockDrag = null;         // 本次拖动的约束快照
+
+  // 拖动开始：记下父关节、原来的骨长，以及这一拖要跟着动的一整条链
+  function beginLockDrag(circle) {
+    lockDrag = null;
+    if (!lockProportions || !circle || circle.type !== "circle" || circle._id == null) return;
+    const byId = {};
+    canvas.getObjects("circle").forEach((c) => { if (c._poseId === circle._poseId) byId[c._id] = c; });
+    const ids = subtreeIds(circle._id).filter((id) => byId[id]);
+    const start = circle.getCenterPoint();
+    const parentId = KEYPOINT_PARENT[circle._id];
+    const parent = parentId == null ? null : byId[parentId];
+    if (!parent) {
+      // 没有上一节（脖子，或上一个点缺失）：整段刚性平移，骨长照样不变
+      lockDrag = { mode: "move", target: circle, startX: start.x, startY: start.y,
+        pts: ids.map((id) => ({ obj: byId[id], x: byId[id].getCenterPoint().x, y: byId[id].getCenterPoint().y })) };
+      return;
+    }
+    const pivot = parent.getCenterPoint();
+    const rx = start.x - pivot.x, ry = start.y - pivot.y;
+    const radius = Math.sqrt(rx * rx + ry * ry);
+    if (!(radius > 1)) return; // 两个点几乎重叠，没法定半径
+    lockDrag = { mode: "rotate", target: circle, pivot, angle0: Math.atan2(ry, rx), radius,
+      pts: ids.map((id) => { const c = byId[id].getCenterPoint(); return { obj: byId[id], rx: c.x - pivot.x, ry: c.y - pivot.y }; }) };
+  }
+
+  // 拖动中：被拖的点只能沿「以父关节为圆心、原骨长为半径」的圆走，子链跟着一起转 → 手脚长度不变
+  function applyLockDrag(target) {
+    const st = lockDrag;
+    if (!st || st.target !== target) return false;
+    const now = target.getCenterPoint();
+    const moved = [];
+    if (st.mode === "move") {
+      const dx = now.x - st.startX, dy = now.y - st.startY;
+      st.pts.forEach((p) => { p.obj.set({ left: p.x + dx, top: p.y + dy }); p.obj.setCoords(); moved.push(p.obj); });
+    } else {
+      const ang = Math.atan2(now.y - st.pivot.y, now.x - st.pivot.x);
+      const d = ang - st.angle0, cos = Math.cos(d), sin = Math.sin(d);
+      st.pts.forEach((p) => {
+        p.obj.set({ left: st.pivot.x + p.rx * cos - p.ry * sin, top: st.pivot.y + p.rx * sin + p.ry * cos });
+        p.obj.setCoords();
+        moved.push(p.obj);
+      });
+    }
+    moved.forEach((obj) => updateLines(obj));
+    return true;
+  }
+
+  // 对称 + 肢体延伸补全缺失关键点（参考 DocKr fixLimbs）
+  function fixLimbs() {
+    const allCircles = canvas.getObjects("circle");
+    const poses = {};
+    allCircles.forEach((c) => { (poses[c._poseId] = poses[c._poseId] || []).push(c); });
+    const symmetryPairs = [[2, 5], [3, 6], [4, 7], [8, 11], [9, 12], [10, 13], [14, 15], [16, 17]];
+    const limbExt = [[4, 3, 2], [7, 6, 5], [10, 9, 8], [13, 12, 11]];
+    Object.keys(poses).forEach((pid) => {
+      const kp = new Array(18).fill(null);
+      poses[pid].forEach((c) => { kp[c._id] = c; });
+      const addMissing = (id, x, y) => {
+        if (kp[id]) return;
+        const c = new fabric.Circle({
+          left: x, top: y, radius: 5, fill: colorOf(id), stroke: colorOf(id),
+          originX: "center", originY: "center", hasControls: false, hasBorders: false, _id: id, _poseId: parseInt(pid)
+        });
+        canvas.add(c); kp[id] = c;
+      };
+      const neck = kp[1];
+      if (neck) symmetryPairs.forEach(([r, l]) => {
+        if (kp[l] && !kp[r]) addMissing(r, neck.left + (neck.left - kp[l].left), kp[l].top);
+        else if (kp[r] && !kp[l]) addMissing(l, neck.left + (neck.left - kp[r].left), kp[r].top);
+      });
+      limbExt.forEach(([t, p1, p2]) => {
+        if (!kp[t] && kp[p1] && kp[p2]) addMissing(t, kp[p1].left + (kp[p1].left - kp[p2].left), kp[p1].top + (kp[p1].top - kp[p2].top));
+      });
+    });
+    // 重画连接
+    canvas.getObjects("polygon").forEach((l) => canvas.remove(l));
+    const byPose = {};
+    canvas.getObjects("circle").forEach((c) => { (byPose[c._poseId] = byPose[c._poseId] || []).push(c); });
+    Object.keys(byPose).forEach((pid) => {
+      const map = {};
+      byPose[pid].forEach((c) => { map[c._id] = c; });
+      connect_keypoints.forEach((pair) => {
+        const s = map[pair[0]], e = map[pair[1]];
+        if (!s || !e) return;
+        const line = new fabric.Polygon(getFusiformPoints({ x: s.left, y: s.top }, { x: e.left, y: e.top }), {
+          fill: colorOf(pair[0], 0.75), strokeWidth: 0, originX: "center", originY: "center",
+          _startCircle: s, _endCircle: e, _poseId: parseInt(pid)
+        });
+        lockLine(line); canvas.add(line);
+      });
+    });
+    canvas.renderAll();
+  }
+
+  function serializeJSON() {
+    const allCircles = canvas.getObjects("circle");
+    const poses = {};
+    allCircles.forEach((c) => { (poses[c._poseId] = poses[c._poseId] || []).push(c); });
+    const people = [];
+    Object.keys(poses).sort((a, b) => a - b).forEach((pid) => {
+      const kp = new Array(18 * 3).fill(0);
+      poses[pid].forEach((c) => {
+        const ctr = c.getCenterPoint();
+        kp[c._id * 3] = ctr.x; kp[c._id * 3 + 1] = ctr.y; kp[c._id * 3 + 2] = 1.0;
+      });
+      people.push({ pose_keypoints_2d: kp });
+    });
+    return JSON.stringify({ width: canvasWidth, height: canvasHeight, people });
+  }
+
+  function loadJSON(text) {
+    let data;
+    try { data = JSON.parse(text); } catch (e) { alert("JSON 解析失败: " + e.message); return; }
+    let people = [];
+    if (Array.isArray(data) && data[0] && data[0].people) people = data[0].people;
+    else if (data.people) people = data.people;
+    if (!people.length) { alert("JSON 中未找到 people"); return; }
+    let w = 512, h = 512;
+    if (Array.isArray(data) && data[0]) { w = data[0].width || w; h = data[0].height || h; }
+    else { w = data.width || w; h = data.height || h; }
+    resizeCanvas(w, h);
+    setPose(people);
+  }
+
+  function resizeCanvas(w, h) {
+    canvasWidth = w; canvasHeight = h;
+    document.getElementById("w-input").value = w;
+    document.getElementById("h-input").value = h;
+    canvasElem.width = w; canvasElem.height = h;
+    canvas.setWidth(w); canvas.setHeight(h);
+    fitStage();
+  }
+
+  function fitStage() {
+    const stage = document.getElementById("stage");
+    const availW = stage.clientWidth - 24, availH = stage.clientHeight - 24;
+    const scale = Math.min(availW / canvasWidth, availH / canvasHeight, 1.5) || 1;
+    wrap.style.width = canvasWidth + "px";
+    wrap.style.height = canvasHeight + "px";
+    wrap.style.transform = "scale(" + scale + ")";
+    wrap.style.transformOrigin = "center center";
+  }
+
+  // 导出时的背景开关：keepBg=false 则不输出背景图
+  // （画布底色为 #000，因此得到的是黑底骨架图，与内置 SDPoseDrawKeypoints 一致）
+  let keepBackground = true; // 未由父窗口指定时保持原行为（手动背景图照旧导出）
+
+  function captureSkeleton(keepBg) {
+    const bg = canvas.backgroundImage;
+    const bgOpacity = bg ? bg.opacity : 1;
+    if (bg) {
+      if (keepBg) bg.opacity = 1;
+      else canvas.setBackgroundImage(null, () => {});
+    }
+    canvas.discardActiveObject();
+    canvas.renderAll();
+    const url = canvas.toDataURL({ format: "png" });
+    if (bg) {
+      if (keepBg) bg.opacity = bgOpacity;
+      else canvas.setBackgroundImage(bg, () => {});
+    }
+    canvas.renderAll();
+    return url;
+  }
+
+  function initCanvas() {
+    canvas = new fabric.Canvas("op-canvas", {
+      backgroundColor: "#000", preserveObjectStacking: true, selection: true,
+      fireRightClick: true, stopContextMenu: true
+    });
+    if (canvas.wrapperEl) canvas.wrapperEl.addEventListener("contextmenu", (e) => e.preventDefault());
+    canvas.on("mouse:wheel", function (opt) {
+      const delta = opt.e.deltaY;
+      let zoom = canvas.getZoom() * 0.999 ** delta;
+      zoom = Math.min(Math.max(zoom, 0.1), 20);
+      const rect = canvas.getElement().getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        const x = (opt.e.clientX - rect.left) * (canvas.width / rect.width);
+        const y = (opt.e.clientY - rect.top) * (canvas.height / rect.height);
+        canvas.zoomToPoint({ x, y }, zoom);
+      } else canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+      opt.e.preventDefault(); opt.e.stopPropagation();
+    });
+    let dragging = false, lastX, lastY, wasSel = true;
+    canvas.on("mouse:down", function (opt) {
+      beginLockDrag(opt.target); // 锁定比例：先记下这一拖的约束（未开锁时什么都不做）
+      if (opt.e.altKey || opt.e.button === 1) {
+        dragging = true; wasSel = canvas.selection; canvas.selection = false;
+        lastX = opt.e.clientX; lastY = opt.e.clientY;
+      }
+    });
+    canvas.on("mouse:move", function (opt) {
+      if (!dragging) return;
+      const vpt = canvas.viewportTransform;
+      vpt[4] += opt.e.clientX - lastX; vpt[5] += opt.e.clientY - lastY;
+      canvas.requestRenderAll(); lastX = opt.e.clientX; lastY = opt.e.clientY;
+    });
+    canvas.on("mouse:up", function () {
+      lockDrag = null;
+      if (dragging) { canvas.setViewportTransform(canvas.viewportTransform); dragging = false; canvas.selection = wasSel; }
+      pushHistory(); // 一次拖动/点选结束，记一步（状态没变时内部会跳过）
+    });
+    canvas.on("object:moving", (e) => {
+      // 开了「锁定比例」：先把被拖的点 + 它的子链摆到合法位置，再按新位置重画骨头
+      if (applyLockDrag(e.target)) return;
+      updateLines(e.target);
+    });
+  }
+
+  // ===== 按钮绑定 =====
+  document.getElementById("btn-add").onclick = () => {
+    const kp = [];
+    DEFAULT_KEYPOINTS.forEach((pt) => kp.push(pt[0], pt[1], 1.0));
+    addPose(kp); canvas.renderAll(); pushHistory();
+  };
+  document.getElementById("btn-del").onclick = () => {
+    const active = canvas.getActiveObjects();
+    if (!active.length) return;
+    active.forEach((o) => { if (o.type === "circle") o._poseId = -999; });
+    canvas.getObjects().forEach((o) => { if (o._poseId === -999) canvas.remove(o); });
+    canvas.discardActiveObject(); canvas.renderAll(); pushHistory();
+  };
+  document.getElementById("btn-clear").onclick = () => { resetCanvas(); canvas.renderAll(); pushHistory(); };
+  document.getElementById("btn-reset").onclick = () => {
+    resetCanvas();
+    const kp = [];
+    DEFAULT_KEYPOINTS.forEach((pt) => kp.push(pt[0], pt[1], 1.0));
+    setPose([{ pose_keypoints_2d: kp }]);
+    pushHistory();
+  };
+  document.getElementById("btn-fix").onclick = () => { fixLimbs(); pushHistory(); };
+  document.getElementById("btn-undo").onclick = () => undo();
+  document.getElementById("btn-redo").onclick = () => redo();
+  document.getElementById("btn-lock").onclick = (e) => {
+    lockProportions = !lockProportions;
+    const btn = e.currentTarget;
+    btn.classList.toggle("on", lockProportions);
+    btn.textContent = lockProportions ? "🔒 锁定比例" : "🔓 锁定比例";
+    btn.title = lockProportions
+      ? "已锁定：拖关节只绕着上一节转，手脚长度不变（再点一下解锁，恢复自由拉伸）"
+      : "点一下锁定：拖关节时手脚长度保持不变，只转关节";
+  };
+  document.getElementById("btn-load").onclick = () => document.getElementById("file-input").click();
+  document.getElementById("file-input").onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const text = await f.text(); loadJSON(text); e.target.value = ""; pushHistory();
+  };
+  document.getElementById("btn-save").onclick = () => {
+    const a = document.createElement("a");
+    a.href = "data:application/json;charset=utf-8," + encodeURIComponent(serializeJSON());
+    a.download = "openpose_pose.json"; a.click();
+  };
+  // 由父窗口/本地文件设置背景图（用于对照摆姿；导出时按不透明合成）
+  let bgOpacity = 0.5; // 记住「显示背景」的不透明度，隐藏后还能原样恢复
+
+  function refreshBgToggle() {
+    const btn = document.getElementById("btn-bg-toggle");
+    if (!btn) return;
+    const img = canvas && canvas.backgroundImage;
+    const shown = !!(img && img.opacity > 0.01);
+    btn.classList.toggle("on", shown);
+    btn.textContent = shown ? "🙈 隐藏背景" : "👁 显示背景";
+    btn.disabled = !img;
+    btn.title = img
+      ? "只影响编辑时垫在底下的对照图，不影响导出（导出背景由「保留图1 背景」设置决定）"
+      : "还没有背景图：点「背景图」选一张，或在人偶编辑器里带图1 过来";
+  }
+
+  function setBackgroundUrl(url, opacity) {
+    if (!url) return;
+    try {
+      fabric.Image.fromURL(url, (img) => {
+        if (!img || !img.width) return;
+        bgOpacity = opacity == null ? 0.5 : opacity;
+        img.set({
+          scaleX: canvasWidth / img.width, scaleY: canvasHeight / img.height,
+          opacity: bgOpacity, selectable: false, evented: false
+        });
+        canvas.setBackgroundImage(img, () => { canvas.renderAll(); refreshBgToggle(); });
+      });
+    } catch (e) { console.warn("背景图加载失败", e); }
+  }
+
+  document.getElementById("btn-bg").onclick = () => document.getElementById("bg-input").click();
+  document.getElementById("btn-bg-toggle").onclick = () => {
+    const img = canvas.backgroundImage;
+    if (!img) return;
+    if (img.opacity > 0.01) { bgOpacity = img.opacity; img.opacity = 0; } // 藏起来（记着原来的透明度）
+    else img.opacity = bgOpacity || 0.5;
+    canvas.requestRenderAll();
+    refreshBgToggle();
+  };
+  document.getElementById("bg-input").onchange = (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    setBackgroundUrl(URL.createObjectURL(f), 0.5);
+    e.target.value = "";
+  };
+  document.getElementById("w-input").onchange = (e) => { const v = parseInt(e.target.value); if (v > 0) { resizeCanvas(v, canvasHeight); pushHistory(); } };
+  document.getElementById("h-input").onchange = (e) => { const v = parseInt(e.target.value); if (v > 0) { resizeCanvas(canvasWidth, v); pushHistory(); } };
+  // 撤销 / 重做快捷键（和 3D 编辑器一致）
+  document.addEventListener("keydown", (e) => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    const key = (e.key || "").toLowerCase();
+    if (key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+    else if ((key === "z" && e.shiftKey) || key === "y") { e.preventDefault(); redo(); }
+  });
+  // 出图并回传父窗口：本页的「应用到节点」按钮，以及人偶编辑器（把它嵌在里面时）
+  // 发来的 openpose-apply-request 都走这里
+  const doApply = () => {
+    const poseJson = serializeJSON();
+    const skeleton = captureSkeleton(keepBackground);
+    parent.postMessage({ type: "openpose-apply", payload: { pose_json: poseJson, skeleton } }, location.origin);
+  };
+  document.getElementById("btn-cancel").onclick = () => parent.postMessage({ type: "openpose-close" }, location.origin);
+  document.getElementById("btn-apply").onclick = doApply;
+
+  // ===== SDPose 设置（节点上那个「设置」搬到这里，挨着「锁定比例」）=====
+  // 值存在节点的 sdpose_settings 控件里：向父窗口要（openpose-settings-request），
+  // 存的时候回传（openpose-settings-save）。被人偶编辑器内嵌时由它转发给节点。
+  const settingsBtn = document.getElementById("btn-settings");
+  let settingsWait = null;
+  const flashSettings = (text) => {
+    settingsBtn.textContent = text;
+    setTimeout(() => { settingsBtn.textContent = "⚙ 设置"; }, 1600);
+  };
+  const persistSettings = (out) => {
+    keepBackground = !!out.keep_background; // 立刻按新开关导出（下一次「应用到节点」生效）
+    if (parent !== window) parent.postMessage({ type: "openpose-settings-save", payload: out }, location.origin);
+    flashSettings("✓ 已保存");
+  };
+  const openSettings = (cfg) => {
+    openSdposeSettingsPanel(cfg, { onSave: persistSettings, onReset: persistSettings });
+  };
+  let settingsPending = false; // 已发请求、还在等节点的设置
+  settingsBtn.onclick = () => {
+    if (parent === window) { openSettings({ ...SDPOSE_DEFAULTS }); return; } // 独立打开：没有节点可存
+    settingsBtn.disabled = true;
+    settingsPending = true;
+    parent.postMessage({ type: "openpose-settings-request" }, location.origin);
+    clearTimeout(settingsWait);
+    // 等不到节点回话（被别的页面内嵌 / 旧宿主）就按默认值打开，别让按钮一直灰着
+    settingsWait = setTimeout(() => {
+      settingsBtn.disabled = false;
+      if (!settingsPending) return;
+      settingsPending = false;   // 已经用默认值开过了，迟到的回复就别再开一个
+      openSettings({ ...SDPOSE_DEFAULTS });
+    }, 1500);
+  };
+
+  // ===== 启动 =====
+  initCanvas();
+  resizeCanvas(512, 512);
+  const kp = [];
+  DEFAULT_KEYPOINTS.forEach((pt) => kp.push(pt[0], pt[1], 1.0));
+  setPose([{ pose_keypoints_2d: kp }]);
+  pushHistory();      // 起点算第一步，撤销不会退到空白
+  refreshBgToggle();
+  window.addEventListener("resize", fitStage);
+
+  // 父窗口加载已有 pose
+  window.addEventListener("message", (event) => {
+    if (event.origin !== location.origin) return;
+    if (event.data?.type === "openpose-load") {
+      const payload = event.data.payload || {};
+      const pj = payload.pose_json;
+      if (pj) {
+        try {
+          const data = JSON.parse(pj);
+          let people = [];
+          if (Array.isArray(data) && data[0] && data[0].people) people = data[0].people;
+          else if (data.people) people = data.people;
+          if (people.length) {
+            let w = 512, h = 512;
+            if (Array.isArray(data) && data[0]) { w = data[0].width || w; h = data[0].height || h; }
+            else { w = data.width || w; h = data.height || h; }
+            resizeCanvas(w, h); setPose(people); pushHistory();
+          }
+        } catch (e) {}
+      }
+      // 图1 作为背景对照（半透明，仅编辑时可见；是否导出由 keepBg 决定）
+      if (payload.bg) setBackgroundUrl(payload.bg, 0.5);
+      if (payload.keepBg !== undefined) keepBackground = !!payload.keepBg;
+    } else if (event.data?.type === "openpose-fit") {
+      // 适配画布尺寸到父窗口给定的宽高
+      const w = event.data.payload && event.data.payload.width, h = event.data.payload && event.data.payload.height;
+      if (w && h) resizeCanvas(w, h);
+    } else if (event.data?.type === "openpose-apply-request") {
+      // 被人偶编辑器内嵌时，由它的「应用到节点」按钮远程触发本页出图
+      doApply();
+    } else if (event.data?.type === "openpose-settings") {
+      // 节点上的 SDPose 设置回来了（被人偶编辑器内嵌时由它转发）
+      if (!settingsPending) return;
+      settingsPending = false;
+      clearTimeout(settingsWait);
+      settingsBtn.disabled = false;
+      openSettings(event.data.payload || {});
+    }
+  });
+
+  parent.postMessage({ type: "openpose-ready" }, location.origin);
+})();
+</script>
+</body>
+</html>

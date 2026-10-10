@@ -1,3 +1,4 @@
+import json
 import os
 import random
 
@@ -162,11 +163,92 @@ class PZ_Listen_Marker:
         return {"ui": {"images": results}, "result": (images,)}
 
 
+# ==========================================
+# API: 编辑提示词的保存（参考 PZ_Universal_Prompt）
+# 存在 input 目录下的 pz_dual_image_prompts.json，和通用提示词节点互不干扰
+# ==========================================
+PROMPTS_FILE = os.path.join(folder_paths.get_input_directory(), "pz_dual_image_prompts.json")
+
+
+def _read_saved_prompts():
+    try:
+        with open(PROMPTS_FILE, "r", encoding="utf-8") as prompt_file:
+            data = json.load(prompt_file)
+        return data if isinstance(data, list) else []
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return []
+
+
+def _write_saved_prompts(prompts):
+    os.makedirs(os.path.dirname(PROMPTS_FILE), exist_ok=True)
+    temporary_file = f"{PROMPTS_FILE}.tmp"
+    with open(temporary_file, "w", encoding="utf-8") as prompt_file:
+        json.dump(prompts, prompt_file, ensure_ascii=False, indent=2)
+    os.replace(temporary_file, PROMPTS_FILE)
+
+
+@PromptServer.instance.routes.get("/pz_easyuse/dual-image-prompts")
+async def get_dual_image_prompts(request):
+    return web.json_response({"prompts": _read_saved_prompts()})
+
+
+@PromptServer.instance.routes.post("/pz_easyuse/dual-image-prompts")
+async def save_dual_image_prompt(request):
+    try:
+        body = await request.json()
+        new_prompt = body.get("prompt", {})
+        if not isinstance(new_prompt, dict):
+            return web.json_response({"error": "Invalid prompt data"}, status=400)
+        prompts = _read_saved_prompts()
+        prompts.append(new_prompt)
+        _write_saved_prompts(prompts)
+        return web.json_response({"prompts": prompts, "index": len(prompts) - 1})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+@PromptServer.instance.routes.put("/pz_easyuse/dual-image-prompts/{index}")
+async def update_dual_image_prompt(request):
+    try:
+        index = int(request.match_info["index"])
+        body = await request.json()
+        updated_prompt = body.get("prompt", {})
+        if not isinstance(updated_prompt, dict):
+            return web.json_response({"error": "Invalid prompt data"}, status=400)
+        prompts = _read_saved_prompts()
+        if index < 0 or index >= len(prompts):
+            return web.json_response({"error": "Index out of range"}, status=404)
+        prompts[index] = updated_prompt
+        _write_saved_prompts(prompts)
+        return web.json_response({"prompts": prompts, "index": index})
+    except (ValueError, KeyError):
+        return web.json_response({"error": "Invalid index"}, status=400)
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+@PromptServer.instance.routes.delete("/pz_easyuse/dual-image-prompts/{index}")
+async def delete_dual_image_prompt(request):
+    try:
+        index = int(request.match_info["index"])
+        prompts = _read_saved_prompts()
+        if index < 0 or index >= len(prompts):
+            return web.json_response({"error": "Index out of range"}, status=404)
+        prompts.pop(index)
+        _write_saved_prompts(prompts)
+        return web.json_response({"prompts": prompts})
+    except (ValueError, KeyError):
+        return web.json_response({"error": "Invalid index"}, status=400)
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
 @PromptServer.instance.routes.get("/pz_easyuse/dual-image-preview")
 async def dual_image_preview(request):
     node = request.query.get("node", "")
     slot = request.query.get("slot", "")
-    if not node.isdigit() or slot not in ("1", "2"):
+    # slot 3 = SDPose 黑底纯骨架图（给人偶编辑器识别用），与 slot 1/2 的图1/图2 预览并存
+    if not node.isdigit() or slot not in ("1", "2", "3"):
         return web.Response(status=400)
     path = os.path.join(PREVIEW_DIR, f"{node}_{slot}.png")
     if not os.path.isfile(path):

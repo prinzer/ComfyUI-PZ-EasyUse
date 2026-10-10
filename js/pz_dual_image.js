@@ -4,6 +4,11 @@ import { api } from "../../scripts/api.js";
 const NODE_TYPE = "PZ_Dual_Image_Loader";
 const SINGLE_NODE_TYPE = "PZ_Single_Image_Loader";
 const MARKER_NODE_TYPE = "PZ_Listen_Marker";
+const POSE_NODE_TYPE = "PZ_Pose_Dual_Image_Loader";
+
+// 姿势相关逻辑（openPoseEditor / previewPoseNodeOutput / setupPoseNode）已分离到 pz_pose_dual_image.js
+// ?v= 只为改完立刻能取到新文件（浏览器会按 URL 缓存扩展模块）
+import { setupPoseNode } from "./pz_pose_dual_image.js?v=20261011-12";
 
 let fileListCache = null;
 async function fetchFileList() {
@@ -50,7 +55,7 @@ app.registerExtension({
     name: "PZ.DualImage",
 
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeData.name !== NODE_TYPE && nodeData.name !== SINGLE_NODE_TYPE) return;
+        if (![NODE_TYPE, SINGLE_NODE_TYPE, POSE_NODE_TYPE].includes(nodeData.name)) return;
 
         // 新版前端内置扩展 Comfy.UploadImage 会为 image_upload 输入自动注入
         // 一个 name="upload" 的 IMAGEUPLOAD 控件（顶部“选择上传按钮 + 图片选择行”），
@@ -65,6 +70,7 @@ app.registerExtension({
             const result = originalCreated?.apply(this, arguments);
             const node = this;
             const IS_SINGLE = nodeData.name === SINGLE_NODE_TYPE;
+            const IS_POSE = nodeData.name === POSE_NODE_TYPE;
             const slotNumbers = IS_SINGLE ? [1] : [1, 2];
             node.setSize?.([520, 560]);
 
@@ -85,6 +91,12 @@ app.registerExtension({
             container.appendChild(style);
             style.textContent += " .pz-di-compare-btn.pz-di-active{border-color:#e8a33d;color:#e8a33d;}";
             style.textContent += " .pz-di-box.pz-di-disabled{opacity:.4;filter:grayscale(.7);} .pz-di-box.pz-di-disabled .pz-di-wrap{pointer-events:none;cursor:not-allowed;} .pz-di-toggle{padding:1px 7px;border:1px solid var(--border-color);border-radius:8px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:10px;line-height:1.2;cursor:pointer;white-space:nowrap;} .pz-di-toggle.pz-di-on{border-color:#e8a33d;color:#e8a33d;}";
+            // 文件名那一行：左边文件名（超长省略），右边靠图像尺寸角标
+            style.textContent += " .pz-di-subrow{display:flex;align-items:center;gap:6px;min-width:0;} .pz-di-subrow .pz-di-sub{flex:1;min-width:0;} .pz-di-subsize{flex:0 0 auto;font-size:10px;color:var(--desc-text);white-space:nowrap;font-variant-numeric:tabular-nums;} .pz-di-subsize:empty{display:none;}";
+            // 预览区内的轮次翻页行（图1 区 / 上一轮区各一条）：沿用 .pz-di-round 的皮肤，只压小一点
+            style.textContent += " .pz-di-roundnav{display:flex;align-items:center;justify-content:center;gap:4px;flex:0 0 auto;} .pz-di-roundnav .pz-di-round{padding:2px 6px;} .pz-di-roundnav .pz-di-roundlabel{font-size:10px;} .pz-di-roundnav .pz-di-roundnav-cmp{border-color:#e8a33d;color:#e8a33d;} .pz-di-roundnav .pz-di-roundnav-cmp:hover:not(:disabled){border-color:#e8a33d;filter:brightness(1.08);}";
+            // 提示词保存 / 打开 OUT 文件夹：小号按钮，hover 蓝色，禁用置灰
+            style.textContent += " .pz-di-toggle.pz-di-iobtn:hover:not(:disabled){border-color:#6ea8fe;color:#6ea8fe;} .pz-di-toggle.pz-di-iobtn:active:not(:disabled){filter:brightness(.92);} .pz-di-toggle:disabled{opacity:.45;cursor:default;} .pz-di-savedtitle{flex:1 1 84px;min-width:70px;padding:2px 4px;border:1px solid var(--border-color);border-radius:4px;background:var(--comfy-input-bg);color:var(--input-text);font:inherit;font-size:10px;line-height:1.2;box-sizing:border-box;} .pz-di-savedselect{flex:1 1 116px;min-width:96px;padding:2px 4px;font-size:10px;} .pz-di-savedselect:disabled{opacity:.6;cursor:default;}";
 
             // 顶部：两个“选择上传图片”按钮
             const uploadRow = document.createElement("div");
@@ -334,10 +346,15 @@ app.registerExtension({
                     header.append(toggle);
                     slot2Toggle = toggle;
                 }
-                // 标题下方显示“当前编辑图：xxx.png”
+                // 标题下方显示“当前编辑图：xxx.png”，同一行靠右显示图像尺寸
                 const subtitle = document.createElement("div");
                 subtitle.className = "pz-di-sub";
                 subtitle.textContent = "当前编辑图：未选择";
+                const sizeBadge = document.createElement("div");
+                sizeBadge.className = "pz-di-subsize";
+                const subRow = document.createElement("div");
+                subRow.className = "pz-di-subrow";
+                subRow.append(subtitle, sizeBadge);
                 const wrap = document.createElement("div");
                 wrap.className = "pz-di-wrap";
                 const preview = document.createElement("img");
@@ -347,6 +364,17 @@ app.registerExtension({
                 placeholder.className = "pz-di-placeholder";
                 placeholder.textContent = "点击或拖拽图片 / Click or drop";
                 wrap.append(preview, placeholder);
+                // 尺寸角标：图一加载完就按 naturalWidth/Height 写上“宽 × 高”，
+                // 本地拖入 / 节点选择 / 姿势编辑器回传的 b64 都能显示；没图时留空（CSS :empty 隐藏）
+                const syncSize = () => {
+                    const w = preview.naturalWidth;
+                    const h = preview.naturalHeight;
+                    const ok = Boolean(preview.getAttribute("src")) && w > 0 && h > 0;
+                    sizeBadge.textContent = ok ? `${w} × ${h}` : "";
+                    sizeBadge.title = ok ? `图像尺寸 / Size：${w} × ${h}` : "";
+                };
+                preview.addEventListener("load", syncSize);
+                preview.addEventListener("error", syncSize);
                 const fileSelect = document.createElement("select");
                 fileSelect.className = "pz-di-select";
                 fileSelect.style.display = "none"; // 隐藏“图1 / 图2”的下拉选择行
@@ -358,11 +386,11 @@ app.registerExtension({
                 textarea.className = "pz-di-text";
                 textarea.placeholder = `编辑指令 ${slotNumber} / Edit prompt ${slotNumber}`;
                 textarea.value = promptWidget?.value || "";
-                const children = [header, subtitle, wrap, fileSelect];
+                const children = [header, subRow, wrap, fileSelect];
                 children.push(fileInput);
                 box.append(...children);
                 boxesRow.appendChild(box);
-                return { slotNumber, box, badge, wrap, preview, placeholder, fileSelect, fileInput, textarea, subtitle };
+                return { slotNumber, box, header, badge, wrap, preview, placeholder, fileSelect, fileInput, textarea, subtitle, subRow, sizeBadge, syncSize };
             });
             // 双图版：图1、图2 共用同一份编辑指令（合并两个提示词框）
             if (!IS_SINGLE) {
@@ -412,6 +440,169 @@ app.registerExtension({
                 sourceRow.append(listenPanel);
             }
             container.insertBefore(sourceRow, roundRow);
+
+            // ===== 提示词保存 + 📂打开OUT文件夹（参考 PZ_Universal_Prompt）=====
+            // 塞进提示词区内部的最后一行：跟着 1/4 高度走，不再额外挤占图片区
+            const promptIoRow = document.createElement("div");
+            promptIoRow.className = "pz-di-promptiorow";
+            promptIoRow.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:4px;flex:0 0 auto;margin-top:4px;";
+
+            const savedTitleInput = document.createElement("input");
+            savedTitleInput.type = "text";
+            savedTitleInput.className = "pz-di-savedtitle";
+            savedTitleInput.placeholder = "标题 / Title";
+            savedTitleInput.title = "保存时用的名字，留空自动叫「提示词_N」/ Name for this saved prompt";
+
+            const savedSelect = document.createElement("select");
+            savedSelect.className = "pz-di-select pz-di-savedselect";
+            savedSelect.title = "已保存的提示词，选中即填回输入框 / Saved prompts";
+
+            const makeIoButton = (label, title) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "pz-di-toggle pz-di-iobtn";
+                button.textContent = label;
+                button.title = title;
+                return button;
+            };
+            const addSavedButton = makeIoButton("💾 保存", "把当前提示词另存为新的一条 / Save current as new");
+            const updateSavedButton = makeIoButton("📝 更新", "用当前提示词覆盖选中的那条 / Update selected");
+            const deleteSavedButton = makeIoButton("🗑 删除", "删除选中的那条 / Delete selected");
+            const openOutButton = makeIoButton("📂OUT", "打开 ComfyUI 输出目录 / Open output folder");
+            promptIoRow.append(savedTitleInput, savedSelect, addSavedButton, updateSavedButton, deleteSavedButton, openOutButton);
+            listenPanel.append(promptIoRow);
+
+            let savedPrompts = [];
+            const currentPromptText = () => slots[0].textarea.value || "";
+            // 复用现有的 input 监听：写回 prompt widget，并在绑定了提示词源时同步回那个节点
+            const setPromptText = (text) => {
+                const ta = slots[0].textarea;
+                ta.value = text || "";
+                ta.dispatchEvent(new Event("input"));
+            };
+            const selectedIndex = () => {
+                const raw = savedSelect.value;
+                return raw === "" ? -1 : Number(raw);
+            };
+            const refreshIoState = () => {
+                const has = savedPrompts.length > 0;
+                const picked = selectedIndex() >= 0;
+                savedSelect.disabled = !has;
+                updateSavedButton.disabled = !picked;
+                deleteSavedButton.disabled = !picked;
+            };
+            const renderSaved = (index = -1) => {
+                const options = [];
+                const placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.textContent = savedPrompts.length ? "选择已保存…" : "无保存";
+                options.push(placeholder);
+                savedPrompts.forEach((item, i) => {
+                    const option = document.createElement("option");
+                    option.value = String(i);
+                    option.textContent = item.title || `提示词_${i + 1}`;
+                    options.push(option);
+                });
+                savedSelect.replaceChildren(...options);
+                savedSelect.value = index >= 0 && index < savedPrompts.length ? String(index) : "";
+                refreshIoState();
+            };
+            // 统一处理响应：后端没重启时 aiohttp 会返回纯文本 "404: Not Found"，
+            // 直接 response.json() 只会抛「Unexpected non-whitespace character...」，看不出原因
+            const requestJson = async (url, options) => {
+                const response = await fetch(url, options);
+                const text = await response.text();
+                let data = null;
+                try { data = text ? JSON.parse(text) : {}; } catch (error) { data = null; }
+                if (!response.ok) {
+                    const detail = data?.error || (text || "").slice(0, 120) || response.statusText;
+                    const hint = response.status === 404 ? "（接口不存在：新加的后端路由要重启 ComfyUI 才生效）" : "";
+                    throw new Error(`HTTP ${response.status} ${detail}${hint}`);
+                }
+                return data || {};
+            };
+            const loadSavedPrompts = async () => {
+                try {
+                    const data = await requestJson("/pz_easyuse/dual-image-prompts", { method: "GET" });
+                    savedPrompts = Array.isArray(data.prompts) ? data.prompts : [];
+                } catch (error) {
+                    console.warn("[PZ Dual Image] Cannot load saved prompts", error);
+                    savedPrompts = [];
+                }
+                renderSaved();
+            };
+            const postSaved = async (url, prompt, method) => {
+                const data = await requestJson(url, {
+                    method,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt }),
+                });
+                savedPrompts = Array.isArray(data.prompts) ? data.prompts : [];
+                return data;
+            };
+
+            savedSelect.addEventListener("change", () => {
+                const index = selectedIndex();
+                const item = index >= 0 ? savedPrompts[index] : null;
+                if (!item) { refreshIoState(); return; }
+                savedTitleInput.value = item.title || `提示词_${index + 1}`;
+                setPromptText(item.text || "");
+                refreshIoState();
+            });
+            addSavedButton.addEventListener("click", async () => {
+                try {
+                    // 同名自动加序号，避免覆盖已有的那条
+                    let title = savedTitleInput.value.trim() || `提示词_${savedPrompts.length + 1}`;
+                    const taken = new Set(savedPrompts.map((item) => item.title));
+                    if (taken.has(title)) {
+                        let counter = 2;
+                        while (taken.has(`${title} ${counter}`)) counter++;
+                        title = `${title} ${counter}`;
+                    }
+                    const data = await postSaved("/pz_easyuse/dual-image-prompts", { title, text: currentPromptText() }, "POST");
+                    savedTitleInput.value = title;
+                    renderSaved(data.index ?? savedPrompts.length - 1);
+                } catch (error) {
+                    alert("提示词保存失败 / Save failed: " + error.message);
+                }
+            });
+            updateSavedButton.addEventListener("click", async () => {
+                const index = selectedIndex();
+                if (!savedPrompts[index]) return;
+                try {
+                    const title = savedTitleInput.value.trim() || savedPrompts[index].title || `提示词_${index + 1}`;
+                    const data = await postSaved(`/pz_easyuse/dual-image-prompts/${index}`, { title, text: currentPromptText() }, "PUT");
+                    savedTitleInput.value = title;
+                    renderSaved(data.index ?? index);
+                } catch (error) {
+                    alert("提示词更新失败 / Update failed: " + error.message);
+                }
+            });
+            deleteSavedButton.addEventListener("click", async () => {
+                const index = selectedIndex();
+                if (!savedPrompts[index]) return;
+                try {
+                    const data = await requestJson(`/pz_easyuse/dual-image-prompts/${index}`, { method: "DELETE" });
+                    savedPrompts = Array.isArray(data.prompts) ? data.prompts : [];
+                    savedTitleInput.value = "";
+                    renderSaved();
+                } catch (error) {
+                    alert("提示词删除失败 / Delete failed: " + error.message);
+                }
+            });
+            openOutButton.addEventListener("click", async () => {
+                try {
+                    const response = await api.fetchApi("/pz/open_output_dir", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ path: "" }),
+                    });
+                    if (!response.ok) throw new Error(await response.text());
+                } catch (error) {
+                    alert("无法打开文件夹 / Cannot open folder: " + error.message);
+                }
+            });
+            void loadSavedPrompts();
 
             // —— 加载节点的“忽略”状态读写：mode 非 0（忽略 / Bypass 或 禁用 / Mute）即视为已忽略 ——
             const findNodeById = (id) => (app.graph?._nodes || []).find((n) => String(n.id) === String(id)) || null;
@@ -508,6 +699,11 @@ app.registerExtension({
             const csub = document.createElement("div");
             csub.className = "pz-di-sub";
             csub.textContent = "上一轮：—";
+            const csize = document.createElement("div");
+            csize.className = "pz-di-subsize";
+            const csubRow = document.createElement("div");
+            csubRow.className = "pz-di-subrow";
+            csubRow.append(csub, csize);
             const cwrap = document.createElement("div");
             cwrap.className = "pz-di-wrap";
             cwrap.style.cursor = "default";
@@ -518,27 +714,42 @@ app.registerExtension({
             cph.className = "pz-di-placeholder";
             cph.textContent = "已是首轮 / First round";
             cwrap.append(cpreview, cph);
+            // 对照图右侧也显示尺寸
+            const csyncSize = () => {
+                const w = cpreview.naturalWidth;
+                const h = cpreview.naturalHeight;
+                const ok = Boolean(cpreview.getAttribute("src")) && w > 0 && h > 0;
+                csize.textContent = ok ? `${w} × ${h}` : "";
+                csize.title = ok ? `图像尺寸 / Size：${w} × ${h}` : "";
+            };
+            cpreview.addEventListener("load", csyncSize);
+            cpreview.addEventListener("error", csyncSize);
             cheader.append(clabel);
-            cbox.append(cheader, csub, cwrap);
-            compareSlot = { box: cbox, header: cheader, label: clabel, subtitle: csub, wrap: cwrap, preview: cpreview, placeholder: cph };
+            cbox.append(cheader, csubRow, cwrap);
+            compareSlot = { box: cbox, header: cheader, label: clabel, subtitle: csub, subRow: csubRow, sizeBadge: csize, syncSize: csyncSize, wrap: cwrap, preview: cpreview, placeholder: cph };
             const refreshCompare = () => {
                 if (!compareMode || !compareSlot) return;
                 const list = roundsList();
                 const idx = roundIndex();
-                const prev = idx - 1;
-                const name = prev >= 0 ? list[prev] : null;
+                // 对照轮次可单独挑（compareIndex），没挑过时默认 = 当前轮次的前一轮
+                const cidx = compareIndex();
+                const name = cidx >= 0 ? list[cidx] : null;
                 if (name) {
                     compareSlot.preview.src = viewUrl(name);
                     compareSlot.preview.style.display = "";
                     compareSlot.placeholder.style.display = "none";
-                    compareSlot.subtitle.textContent = `上一轮：${name}`;
+                    compareSlot.subtitle.textContent = cidx === idx
+                        ? `对照：第 ${cidx + 1} 轮（当前轮）· ${name}`
+                        : `对照：第 ${cidx + 1} 轮 · ${name}`;
                 } else {
                     compareSlot.preview.removeAttribute("src");
                     compareSlot.preview.style.display = "none";
                     compareSlot.placeholder.style.display = "";
-                    compareSlot.placeholder.textContent = prev >= 0 ? "上一轮：无图" : "已是首轮 / First round";
+                    compareSlot.placeholder.textContent = idx > 0 ? "上一轮：无图" : "已是首轮 / First round";
                     compareSlot.subtitle.textContent = "上一轮：—";
                 }
+                compareSlot.syncSize?.(); // 尺寸角标：有图时由 load 事件补上，没图时立刻清掉
+                refreshNavs(); // 上一轮预览区那一行跟着刷新
             };
             let savedNormalWidth = node.size[0] || 520;
             const COMPARE_WIDTH = 820;
@@ -579,10 +790,16 @@ app.registerExtension({
                 if (text !== undefined) slot.placeholder.textContent = text;
                 slot.placeholder.style.display = visible ? "flex" : "none";
             };
+            // 有图时一定要把 <img> 显出来：姿势模块 setPosePreview("") 会把 preview 设成 display:none，
+            // 之后再刷新预览只改 src 不改 display，就会出现「文件名和尺寸都在、图却不显示」的空白区
+            const showPreview = (slot) => {
+                if (slot.preview && slot.preview.style.display === "none") slot.preview.style.display = "";
+            };
             slots.forEach((slot) => {
-                slot.preview.addEventListener("load", () => setPlaceholder(slot, false));
+                // 图只要加载成功就一定显示（改 src 藏图后也能自愈）
+                slot.preview.addEventListener("load", () => { showPreview(slot); setPlaceholder(slot, false); });
                 slot.preview.addEventListener("error", () => {
-                    if (slot.preview.getAttribute("src")) setPlaceholder(slot, true);
+                    if (slot.preview.getAttribute("src")) setPlaceholder(slot, true, "图片读取失败 / Image not found");
                 });
             });
 
@@ -623,11 +840,13 @@ app.registerExtension({
                 const value = widgetFor(slot.slotNumber)?.value;
                 if (value) {
                     slot.preview.src = viewUrl(value);
+                    showPreview(slot); // 之前被藏起来过也要显回来
                     setPlaceholder(slot, false);
                 } else {
                     slot.preview.removeAttribute("src");
                     setPlaceholder(slot, true);
                 }
+                slot.syncSize?.(); // 去掉图时清掉尺寸角标（有新图时由 img load 事件补上）
             };
 
             const refreshSlotState = (slot) => {
@@ -646,6 +865,7 @@ app.registerExtension({
                 if (linked) {
                     slot.preview.removeAttribute("src");
                     setPlaceholder(slot, true, "等待执行显示 / Run to preview");
+                    slot.syncSize?.();
                 } else {
                     setPlaceholder(slot, true, "点击或拖拽图片 / Click or drop");
                     refreshFilePreview(slot);
@@ -682,12 +902,17 @@ app.registerExtension({
                 if (!Number.isFinite(index)) index = list.length - 1;
                 return Math.min(Math.max(index, 0), list.length - 1);
             };
+            // 预览区内的翻页行在下面才建好，这里先放两个占位实现，
+            // 这样 refreshRoundButtons / refreshCompare（定义更早）也能先引用，不会踩 TDZ
+            let compareIndex = () => -1;
+            let refreshNavs = () => {};
             const refreshRoundButtons = () => {
                 const list = roundsList();
                 const index = roundIndex();
                 prevRoundButton.disabled = index <= 0;
                 nextRoundButton.disabled = index < 0 || index >= list.length - 1;
                 roundLabel.textContent = list.length ? `第 ${index + 1} / ${list.length} 轮` : "无轮次";
+                refreshNavs(); // 图1 预览区那一行跟着刷新
             };
             const pushRound = (name) => {
                 if (!name) return;
@@ -730,6 +955,76 @@ app.registerExtension({
             };
             prevRoundButton.addEventListener("click", () => applyRound(roundIndex() - 1));
             nextRoundButton.addEventListener("click", () => applyRound(roundIndex() + 1));
+
+            // ===== 预览区内的翻页：图1 区翻“当前编辑轮次”，上一轮区单独挑“对照轮次” =====
+            // 底部那一行（◀ 上一轮 / 第 N 轮 / 下一轮 ▶ / ▶ 运行 / 对照）保持原样，只是多了两处就近操作。
+            const mkNavButton = (text, title, extraClass = "") => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = `pz-di-round ${extraClass}`.trim();
+                button.textContent = text;
+                button.title = title;
+                return button;
+            };
+            const mkNavRow = () => {
+                const row = document.createElement("div");
+                row.className = "pz-di-roundnav";
+                return row;
+            };
+            const mkNavLabel = () => {
+                const label = document.createElement("span");
+                label.className = "pz-di-roundlabel";
+                label.textContent = "无轮次";
+                return label;
+            };
+
+            // ① 图1 预览区：与底部按钮同一套逻辑，翻的是当前编辑轮次
+            const nav1 = mkNavRow();
+            const nav1Prev = mkNavButton("◀ 上一轮", "载入上一轮编辑的图片 / Previous round（与底部按钮相同）");
+            const nav1Label = mkNavLabel();
+            const nav1Next = mkNavButton("下一轮 ▶", "载入下一轮编辑的图片 / Next round（与底部按钮相同）");
+            nav1.append(nav1Prev, nav1Label, nav1Next);
+            nav1Prev.addEventListener("click", () => applyRound(roundIndex() - 1));
+            nav1Next.addEventListener("click", () => applyRound(roundIndex() + 1));
+            slots[0]?.box?.appendChild(nav1);
+
+            // ② 上一轮（对照）预览区：独立的对照轮次，可以停在任意一轮跟图1 比
+            const COMPARE_INDEX_PROP = "pz_compare_index";
+            compareIndex = () => {
+                const list = roundsList();
+                if (!list.length) return -1;
+                const stored = Number(node.properties[COMPARE_INDEX_PROP]);
+                // 没手动挑过 → 默认跟当前轮次的前一轮（原来的行为）
+                const base = Number.isFinite(stored) ? stored : roundIndex() - 1;
+                return Math.min(Math.max(base, 0), list.length - 1);
+            };
+            const setCompareIndex = (index) => {
+                const list = roundsList();
+                if (!list.length) return;
+                node.properties[COMPARE_INDEX_PROP] = Math.min(Math.max(index, 0), list.length - 1);
+                refreshCompare();
+            };
+            const navC = mkNavRow();
+            const navCPrev = mkNavButton("◀ 上轮", "对照更早的一轮：只换这一区的对照图，不影响图1 / Compare an earlier round", "pz-di-roundnav-cmp");
+            const navCLabel = mkNavLabel();
+            const navCNext = mkNavButton("下轮 ▶", "对照更晚的一轮：只换这一区的对照图，不影响图1 / Compare a later round", "pz-di-roundnav-cmp");
+            navC.append(navCPrev, navCLabel, navCNext);
+            navCPrev.addEventListener("click", () => setCompareIndex(compareIndex() - 1));
+            navCNext.addEventListener("click", () => setCompareIndex(compareIndex() + 1));
+            compareSlot?.box?.appendChild(navC);
+
+            refreshNavs = () => {
+                const list = roundsList();
+                const index = roundIndex();
+                nav1Prev.disabled = index <= 0;
+                nav1Next.disabled = index < 0 || index >= list.length - 1;
+                nav1Label.textContent = list.length ? `第 ${index + 1} / ${list.length} 轮` : "无轮次";
+                const cidx = compareIndex();
+                navCPrev.disabled = cidx <= 0;
+                navCNext.disabled = cidx < 0 || cidx >= list.length - 1;
+                navCLabel.textContent = list.length ? `对照：第 ${cidx + 1} / ${list.length} 轮` : "无轮次";
+            };
+            refreshNavs();
             runButton.addEventListener("click", () => {
                 const run = async () => {
                     try {
@@ -858,6 +1153,16 @@ app.registerExtension({
                 ignoreReady = true;
             };
             initIgnoreSync();
+
+            // ===== PZ 姿势双图节点：图2 像原 PZ_Dual_Image_Loader 一样始终可链接到图片加载节点，
+            //        同时可由内置 3D 人偶编辑器生成；应用姿势的结果落在图2 位置，并同步到绑定的加载节点。
+            //        姿势相关的 UI 与编辑器通信逻辑已分离到 pz_pose_dual_image.js =====
+            if (IS_POSE) {
+                // findNodeById / widgetFor / refreshFilePreview：给「显示绑定图」用
+                // （图2 预览改从绑定的加载节点取值，与上面的劫持同步同一套读写方式）
+                setupPoseNode(node, { slots, currentLoadListenId2, findNodeById, widgetFor, refreshFilePreview });
+            }
+
             const refreshLoadListenSelect2 = () => {
                 if (!loadListenSelect2) return;
                 const current = currentLoadListenId2();
@@ -1290,6 +1595,7 @@ app.registerExtension({
                 slots.forEach((slot) => {
                     if (!isLinked(slot.slotNumber)) return;
                     slot.preview.src = `/pz_easyuse/dual-image-preview?node=${node.id}&slot=${slot.slotNumber}&rand=${Math.random()}`;
+                    showPreview(slot);
                     setPlaceholder(slot, false);
                 });
             };
@@ -1351,9 +1657,9 @@ app.registerExtension({
                 const top = Number(layout.last_y);
                 const full = Number.isFinite(top) && top > 0 ? (node.size[1] - top - 10) : 270;
                 container.style.height = `${Math.max(120, full)}px`;
-                // 提示词（含绑定下拉）区域基本保持为节点高度的 1/3，剩余空间交给图片区
+                // 提示词（含绑定下拉）区域约占节点高度的 1/4，剩余空间交给图片区
                 if (sourceRow) {
-                    const promptH = Math.max(90, Math.round(node.size[1] / 3));
+                    const promptH = Math.max(90, Math.round(node.size[1] / 4));
                     sourceRow.style.flex = "0 0 auto";
                     sourceRow.style.height = `${promptH}px`;
                 }

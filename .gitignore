@@ -2,3 +2,5 @@ __pycache__
 .pyc
 .git
 .DS_Store
+# vendored Fisher-Pose 3D 姿势编辑器（从 ComfyUI-Fisher-Pose/web 复制，含 ~86MB 模型，不入库）
+js/fisher_editor/
