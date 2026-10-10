@@ -161,7 +161,8 @@ Generator List (Batch List)：“生成数组/List，一次给 K 采样器，一
 
 基于 **PZ 2图加载编辑**：图1 仍是编辑目标，区别是**图2 可以不来自图片，而由内置的 VNCCS 3D 人偶编辑器生成姿势图**（即 ControlNet / 重绘常用的 OpenPose 骨架人偶图）。其余劫持、结果图回流、轮次、对照等能力与双图版一致。
 
-> 依赖：姿势编辑器复用 [ComfyUI-Fisher-Pose](https://github.com/Work-Fisher/ComfyUI-Fisher-Pose) 的 VNCCS 编辑器与约 86MB 人偶模型（`web/vnccs/assets/pose_studio_makehuman.v2.bin`）。请先安装该节点并确保模型就位；本节点仅负责打开它的编辑器并把生成的人偶图作为 `image_2` 输出。
+> 姿势编辑器是**内置的一整套**：仓库自带 `js/fisher_editor/`（源自 [ComfyUI-Fisher-Pose](https://github.com/Work-Fisher/ComfyUI-Fisher-Pose) 的 VNCCS 编辑器，**含约 82MB MakeHuman 人偶模型** `js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.bin`），**无需再安装原节点**，clone 下来即可用。本节点负责在 iframe 里打开它、传图 / 收图，并把生成的人偶图作为 `image_2` 输出。
+> 许可：编辑器与模型沿用上游许可，见 `js/fisher_editor/vnccs/LICENSE` 与 `js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.CC0-1.0.md`（人偶数据为 CC0-1.0）。
 
 <img src="./images/PZ_Pose_Dual_Image_Loader.png" />
 

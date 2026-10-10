@@ -2,5 +2,6 @@ __pycache__
 .pyc
 .git
 .DS_Store
-# vendored Fisher-Pose 3D 姿势编辑器（从 ComfyUI-Fisher-Pose/web 复制，含 ~86MB 模型，不入库）
-js/fisher_editor/
+# 注意：js/fisher_editor/ 是 vendored 的 Fisher-Pose 3D 姿势编辑器（含约 82MB MakeHuman 人偶模型）。
+# 为让本插件单独可用、无需再装 ComfyUI-Fisher-Pose，这里刻意【不忽略】，整目录随仓库分发。
+# 上游与许可见 README「PZ 姿势双图加载」章节，以及 js/fisher_editor/vnccs/LICENSE、vnccs/assets/pose_studio_makehuman.v2.CC0-1.0.md。

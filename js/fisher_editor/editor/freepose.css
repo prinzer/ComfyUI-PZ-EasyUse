@@ -1,0 +1,83 @@
+.fp-main{grid-template-columns:250px minmax(420px,1fr) 300px}
+.fp-left{gap:0}
+.fp-stage{background:#1a1a2e;border-color:#2a2d44}
+.fp-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none;z-index:1}
+.fp-stage .stage-label,.fp-stage .stage-bottom>span{color:#aab4cf}
+.fp-stage .stage-top{pointer-events:none;z-index:6}
+.fp-chip{pointer-events:auto;background:#ffffffc8;font-size:11px;padding:6px 11px}
+.fp-stage .stage-tools{display:flex;align-items:center;gap:6px;pointer-events:auto}
+.fp-stage .stage-tools .fp-chip{display:inline-flex;align-items:center;gap:5px;line-height:1.25;border:1px solid #dae1eb;cursor:pointer}
+.fp-stage .stage-tools .fp-chip.fp-chip-on{background:#456bea;border-color:#456bea;color:#fff}
+.fp-stage .stage-tools .fp-chip:disabled{opacity:.45;cursor:not-allowed}
+/* 骨骼图模式：内嵌的二维骨架编辑器铺满编辑区（盖住 3D 视口，但让顶部工具条留在上面） */
+.fp-skeleton-frame{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#1b1e24;z-index:4}
+.fp-overlay-file input{display:none}
+.fp-overlay-opacity input[type="range"]{width:66px;margin:0}
+.fp-inset{position:absolute;right:16px;bottom:62px;z-index:3;margin:0;background:#fff;border-radius:6px;padding:4px;box-shadow:0 4px 18px #0006;pointer-events:none}
+.fp-inset img{display:block;max-width:150px;max-height:150px}
+.fp-inset figcaption{font-size:9px;color:#8190a5;text-align:center;margin-top:2px}
+.fp-presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.fp-presets button{padding:5px 9px;font-size:11px}
+.fp-disabled{opacity:.4;pointer-events:none}
+.fp-pick{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.fp-button{position:relative;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:7px;padding:8px 6px;font-size:11px;background:#fff;cursor:pointer}
+.fp-button:hover{background:#f0f4ff;border-color:#c5d2fb}
+.fp-button input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.fp-search{width:100%;padding:7px 9px;border:1px solid #dce3ed;border-radius:6px;font:inherit;font-size:11px;margin-bottom:8px}
+.fp-gallery{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:360px;overflow-y:auto;border-radius:8px}
+.fp-gallery.drag{outline:2px dashed var(--blue);outline-offset:2px}
+.fp-gallery p{grid-column:1/-1;margin:0}
+.fp-thumb{padding:0;border:2px solid transparent;border-radius:6px;background:#000;overflow:hidden;aspect-ratio:3/2;position:relative}
+.fp-thumb img{width:100%;height:100%;object-fit:contain;display:block}
+.fp-thumb span{position:absolute;left:0;right:0;bottom:0;font-size:8px;color:#dfe6f5;background:#000a;padding:1px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.fp-thumb.active{border-color:#6e8cff}
+.fp-thumb.failed{opacity:.35}
+.fp-flips,.fp-hands{display:grid;grid-template-columns:34px 1fr 1fr;gap:6px;align-items:center;font-size:11px;color:#718198}
+.fp-hands{grid-template-columns:34px 1fr 1fr 1fr}
+.fp-flips>button:nth-child(-n+2){grid-column:span 1}
+.fp-flips>button[data-flip=body]{grid-column:1/3}
+.fp-flips button,.fp-hands button{padding:6px 4px;font-size:11px}
+.fp-flips button.on{background:#eef3ff;border-color:#9fb4ff;color:#3858cc}
+.field-label{display:block;color:#718198;font-size:11px;margin-bottom:10px}
+.field-label textarea{display:block;width:100%;margin-top:9px;padding:9px;border:1px solid #dce3ed;border-radius:6px;background:white;color:#263347;font:inherit;min-height:60px;resize:vertical}
+.dimensions{margin-top:16px}
+.segmented.ratios button{padding:7px 6px}
+#capture-preview,#person-preview{display:block;max-width:100%;max-height:220px;margin:0 auto 14px;border:1px solid var(--line);border-radius:6px;background:#fff}
+#description{font-family:Consolas,monospace;white-space:pre-wrap;font-size:12px;color:#2f3e57;background:#f5f7fa;border-radius:6px;padding:10px;margin:0 0 6px}
+.description-note{font-size:10px;color:#a0a9b6}
+.right-panel section,.left-panel section{margin-bottom:22px}
+.fp-loading{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#1a1a2ee6;color:#c9d2ea;font-size:12px}
+.fp-loading[hidden]{display:none}
+.fp-spinner{width:30px;height:30px;border:3px solid #ffffff30;border-top-color:#8aa4ff;border-radius:50%;animation:fp-spin 1s linear infinite}
+@keyframes fp-spin{to{transform:rotate(360deg)}}
+.fp-sources{margin-bottom:10px}.fp-sources button{padding:6px 4px;font-size:11px}
+.fp-save{margin-bottom:10px;border-color:#c5d2fb;color:#3858cc;background:#f3f6ff}
+.fp-save:hover{background:#e8eeff}
+.fp-saved .fp-thumb{background:#fff;border-color:#e3e8f1;aspect-ratio:1}
+.fp-saved .fp-thumb.active{border-color:#6e8cff}
+.fp-saved .fp-thumb span{color:#fff;background:#1a1f2ecc;font-size:9px;padding:2px 4px}
+.fp-delete{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:#1a1f2eb0;color:#fff;font-size:12px;font-style:normal;line-height:18px;text-align:center;opacity:0;cursor:pointer}
+.fp-saved .fp-thumb:hover .fp-delete{opacity:1}
+.fp-gallery .fp-thumb:hover .fp-delete{opacity:1} /* 图库缩略图的删除 ×，同样只在悬停时出现 */
+.fp-delete:hover{background:#e5484d}
+.fp-fit{margin:6px 0 0;font-size:11px;line-height:1.5}
+.fp-fit label{display:flex;gap:5px;align-items:flex-start;cursor:pointer}
+.fp-fit label span{flex:1;min-width:0} /* 换行后的文字跟首行左对齐，不再回到勾选框下面 */
+.fp-fit-inline{margin:2px 0 0;padding-left:2px} /* 紧跟在「一键人偶姿势」按钮下面，别被按钮的下边距拉开 */
+.fp-fit input{margin:2px 0 0;flex:none}
+/* 一键人偶姿势：这一节的主操作，比旁边的保存按钮更显眼 */
+.fp-onekey{border-color:#9db4ff;color:#2743b4;background:#eaf0ff;font-weight:600}
+.fp-onekey:hover{background:#dde7ff}
+.fp-onekey:disabled{opacity:.5;cursor:default}
+/* 导入图转人偶：挪到「我的图库」区、跟在「选择骨架文件夹 / 选择骨架图片」后面当辅助入口。
+   所以做成浅绿虚线的小字按钮（不再是主操作的实心绿），但整行铺满，好点也好认。 */
+.fp-import{display:block;width:100%;margin:0 0 10px;border:1px dashed #9dd4b0;border-radius:7px;padding:8px 6px;font-size:11px;font-weight:500;color:#1f7a4a;background:#f4fbf7}
+.fp-import:hover{background:#e7f6ee;border-color:#79c79b}
+.fp-import:disabled{opacity:.5;cursor:default}
+/* SDPose 骨架卡片：骨架图铺满卡片宽度（原来 52px 太小，看不清骨架）；
+   文字挪到图下方分两行（粗体名字 + 提示），避免原来那种挤在一行中间断行 */
+.fp-sdpose-preview{display:flex;flex-direction:column;gap:6px;margin:0 0 10px;padding:6px;border:1px solid #e3e8f1;border-radius:8px;background:#f7f9fc}
+.fp-sdpose-preview img{display:block;width:100%;height:150px;object-fit:contain;border-radius:6px;background:#000;cursor:pointer;flex:none}
+.fp-sdpose-preview img:hover{box-shadow:0 0 0 2px #6e8cff}
+.fp-sdpose-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fp-sdpose-info b{font-size:12px;font-weight:650;color:#263347;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
