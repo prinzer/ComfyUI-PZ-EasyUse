@@ -16,6 +16,27 @@
 - **编辑器随仓库自带**，无需再装 ComfyUI-Fisher-Pose；其中约 82MB 的 MakeHuman 人偶模型不随仓库分发，首次使用前下载一次放到 `js/fisher_editor/vnccs/assets/`，见下方「人偶模型（约 82MB，首次使用下载一次）」。
 - 其余劫持 / 结果图回流 / 轮次 / 对照 / 用时显示与双图版一致。
 
+**人偶模型（约 82MB，首次使用下载一次）**
+
+把模型放到下面这个**确切路径，文件名不要改**：
+
+```
+ComfyUI/custom_nodes/ComfyUI-PZ-EasyUse/js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.bin
+```
+
+下载（两个源内容相同，均为 86,187,496 字节，任选其一）：
+
+1. 本仓库 `with-model` 分支直链（版本与本插件一致，推荐）：<https://github.com/prinzer/ComfyUI-PZ-EasyUse/raw/with-model/js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.bin>
+2. 上游 ComfyUI-Fisher-Pose：<https://raw.githubusercontent.com/Work-Fisher/ComfyUI-Fisher-Pose/main/web/vnccs/assets/pose_studio_makehuman.v2.bin>
+
+想连模型一起 clone（体积约 90MB）：
+
+```
+git clone -b with-model https://github.com/prinzer/ComfyUI-PZ-EasyUse.git
+```
+
+没放、放错目录或下载不完整时，编辑器会提示「人体数据文件缺失或不完整」。人偶数据为 CC0-1.0，许可见 `js/fisher_editor/vnccs/LICENSE` 与 `js/fisher_editor/vnccs/assets/pose_studio_makehuman.v2.CC0-1.0.md`。
+
 <img src="./images/PZ_Pose_Dual_Image_Loader.png" />
 
 2026年9月30日：
